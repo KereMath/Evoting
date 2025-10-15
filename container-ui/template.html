@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Container Storage & Accessibility</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .data-row:last-child {
+            border-bottom: none;
+        }
+
+        .data-label {
+            font-weight: 600;
+            color: #666;
+            font-size: 13px;
+        }
+
+        .data-value {
+            color: #333;
+            font-size: 13px;
+            font-family: 'Courier New', monospace;
+            max-width: 60%;
+            word-break: break-all;
+            text-align: right;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.3s;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+        }
+
+        .endpoint-list {
+            list-style: none;
+        }
+
+        .endpoint-item {
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .method {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .method-get {
+            background: #28a745;
+            color: white;
+        }
+
+        .method-post {
+            background: #007bff;
+            color: white;
+        }
+
+        .loading {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 id="containerTitle">🔐 Container Storage & Accessibility</h1>
+            <div class="subtitle" id="containerSubtitle">Loading container information...</div>
+            <span class="status-badge status-active" id="statusBadge">● Active</span>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <div class="card-title">📦 Container Information</div>
+                <div class="data-row">
+                    <span class="data-label">Container ID:</span>
+                    <span class="data-value" id="containerId">Loading...</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Type:</span>
+                    <span class="data-value" id="containerType">Loading...</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">API Port:</span>
+                    <span class="data-value" id="apiPort">Loading...</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">UI Port:</span>
+                    <span class="data-value" id="uiPort">Loading...</span>
+                </div>
+            </div>
+
+            <div class="card" id="keysCard" style="display: none;">
+                <div class="card-title">🔑 Keys</div>
+                <div id="keysData">
+                    <div class="loading">Loading keys...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">🔐 Cryptographic Parameters</div>
+            <div id="cryptoParams">
+                <div class="loading">Loading crypto parameters...</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">💾 Container Data</div>
+            <div id="storageData">
+                <div class="loading">Loading storage data...</div>
+            </div>
+            <button class="btn" onclick="refreshData()">🔄 Refresh Data</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuration - will be replaced by container-specific values
+        const CONTAINER_TYPE = '{{CONTAINER_TYPE}}';
+        const API_PORT = '{{API_PORT}}';
+        const UI_PORT = '{{UI_PORT}}';
+        const CONTAINER_ID = '{{CONTAINER_ID}}';
+
+        // Initialize page
+        async function initPage() {
+            document.getElementById('containerTitle').textContent = `🔐 ${CONTAINER_TYPE} Container`;
+            document.getElementById('containerSubtitle').textContent = `Storage & Accessibility Dashboard`;
+            document.getElementById('containerId').textContent = CONTAINER_ID || 'N/A';
+            document.getElementById('containerType').textContent = CONTAINER_TYPE;
+            document.getElementById('apiPort').textContent = API_PORT;
+            document.getElementById('uiPort').textContent = UI_PORT;
+
+            await loadStorageData();
+        }
+
+        async function loadStorageData() {
+            const storageDiv = document.getElementById('storageData');
+            const cryptoDiv = document.getElementById('cryptoParams');
+
+            try {
+                // Try to fetch data from local UI server
+                const response = await fetch(`http://localhost:${UI_PORT}/storage`);
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch storage data');
+                }
+
+                const data = await response.json();
+
+                // Display crypto parameters separately
+                if (data.crypto_parameters && data.crypto_parameters_loaded) {
+                    displayCryptoParams(data.crypto_parameters);
+                } else {
+                    cryptoDiv.innerHTML = '<div class="error">⚠️ Crypto parameters not available</div>';
+                }
+
+                displayStorageData(data);
+            } catch (error) {
+                // If API not available, show sample data
+                storageDiv.innerHTML = `
+                    <div class="error">
+                        API not available. Showing sample structure.
+                    </div>
+                    <pre>${JSON.stringify(getSampleData(), null, 2)}</pre>
+                `;
+                cryptoDiv.innerHTML = '<div class="error">⚠️ Unable to load crypto parameters</div>';
+            }
+        }
+
+        function displayCryptoParams(params) {
+            const cryptoDiv = document.getElementById('cryptoParams');
+
+            const truncate = (str, len = 48) => {
+                if (!str) return 'N/A';
+                return str.length > len ? str.substring(0, len) + '...' : str;
+            };
+
+            cryptoDiv.innerHTML = `
+                <div style="margin-bottom: 15px;">
+                    <div class="data-row" style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 10px;">
+                        <div>
+                            <strong style="color: #495057; font-size: 13px; display: block; margin-bottom: 5px;">Election ID:</strong>
+                            <span style="font-family: monospace; font-size: 11px; word-break: break-all; color: #6c757d;">${params.election_id || 'N/A'}</span>
+                        </div>
+                    </div>
+
+                    <div class="data-row" style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 10px;">
+                        <div>
+                            <strong style="color: #495057; font-size: 13px; display: block; margin-bottom: 5px;">Security Level:</strong>
+                            <span style="font-family: monospace; font-size: 12px; color: #28a745; font-weight: 600;">${params.security_level || 256} bits</span>
+                        </div>
+                    </div>
+
+                    <div class="data-row" style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 10px;">
+                        <div>
+                            <strong style="color: #495057; font-size: 13px; display: block; margin-bottom: 5px;">Prime Order (q):</strong>
+                            <span style="font-family: monospace; font-size: 11px; word-break: break-all; color: #6c757d;">${truncate(params.prime_order)}</span>
+                        </div>
+                    </div>
+
+                    <div class="data-row" style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 10px;">
+                        <div>
+                            <strong style="color: #495057; font-size: 13px; display: block; margin-bottom: 5px;">Generator G1:</strong>
+                            <span style="font-family: monospace; font-size: 11px; word-break: break-all; color: #6c757d;">${truncate(params.g1)}</span>
+                        </div>
+                    </div>
+
+                    <div class="data-row" style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 10px;">
+                        <div>
+                            <strong style="color: #495057; font-size: 13px; display: block; margin-bottom: 5px;">Generator G2:</strong>
+                            <span style="font-family: monospace; font-size: 11px; word-break: break-all; color: #6c757d;">${truncate(params.g2)}</span>
+                        </div>
+                    </div>
+
+                    <div class="data-row" style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 10px;">
+                        <div>
+                            <strong style="color: #495057; font-size: 13px; display: block; margin-bottom: 5px;">Hash Point H1:</strong>
+                            <span style="font-family: monospace; font-size: 11px; word-break: break-all; color: #6c757d;">${truncate(params.h1)}</span>
+                        </div>
+                    </div>
+
+                    <div style="padding: 12px; background: #d1ecf1; border: 1px solid #bee5eb; border-radius: 6px; margin-bottom: 10px;">
+                        <strong style="color: #0c5460; font-size: 12px;">ℹ️ Info:</strong>
+                        <p style="margin: 5px 0 0 0; font-size: 11px; color: #0c5460;">
+                            These parameters are shared by all participants (TTP, Trustees, Voters) and generated using PBC Type A curves.
+                        </p>
+                    </div>
+                </div>
+                <button class="btn" onclick="showFullCryptoParams()" style="margin-top: 10px;">📋 Show Full Parameters</button>
+            `;
+        }
+
+        function showFullCryptoParams() {
+            fetch(`http://localhost:${UI_PORT}/storage`)
+                .then(r => r.json())
+                .then(data => {
+                    const params = data.crypto_parameters;
+                    const cryptoDiv = document.getElementById('cryptoParams');
+                    cryptoDiv.innerHTML = `
+                        <pre>${JSON.stringify(params, null, 2)}</pre>
+                        <button class="btn" onclick="loadStorageData()">↩️ Back to Summary</button>
+                    `;
+                });
+        }
+
+        function displayStorageData(data) {
+            const storageDiv = document.getElementById('storageData');
+            const keysCard = document.getElementById('keysCard');
+            const keysData = document.getElementById('keysData');
+
+            // Remove crypto params from storage display (shown separately)
+            const { crypto_parameters, crypto_parameters_loaded, public_key, private_key_stored, ...displayData } = data;
+
+            // Show keys card if public_key or private_key_stored exists
+            if (public_key !== undefined || private_key_stored !== undefined) {
+                keysCard.style.display = 'block';
+
+                let keysHtml = '';
+                if (public_key) {
+                    keysHtml += `
+                        <div class="data-row" style="background: #d4edda; padding: 12px; border-radius: 6px; margin-bottom: 10px;">
+                            <div>
+                                <strong style="color: #155724; font-size: 13px; display: block; margin-bottom: 5px;">🔓 Public Key:</strong>
+                                <span style="font-family: monospace; font-size: 11px; word-break: break-all; color: #155724;">${public_key}</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    keysHtml += `
+                        <div class="data-row" style="background: #fff3cd; padding: 12px; border-radius: 6px; margin-bottom: 10px;">
+                            <div>
+                                <strong style="color: #856404; font-size: 13px;">🔓 Public Key:</strong>
+                                <span style="font-size: 12px; color: #856404;"> Not generated yet</span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                if (private_key_stored !== undefined) {
+                    if (private_key_stored) {
+                        keysHtml += `
+                            <div class="data-row" style="background: #d4edda; padding: 12px; border-radius: 6px;">
+                                <div>
+                                    <strong style="color: #155724; font-size: 13px;">🔐 Private Key:</strong>
+                                    <span style="font-size: 12px; color: #155724;"> ✅ Stored securely</span>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        keysHtml += `
+                            <div class="data-row" style="background: #fff3cd; padding: 12px; border-radius: 6px;">
+                                <div>
+                                    <strong style="color: #856404; font-size: 13px;">🔐 Private Key:</strong>
+                                    <span style="font-size: 12px; color: #856404;"> ⏳ Not generated yet</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+
+                keysData.innerHTML = keysHtml;
+            }
+
+            let html = '';
+            for (const [key, value] of Object.entries(displayData)) {
+                const displayValue = typeof value === 'object'
+                    ? JSON.stringify(value).substring(0, 50) + '...'
+                    : (value !== null && value !== undefined ? value.toString() : 'N/A');
+
+                html += `
+                    <div class="data-row">
+                        <span class="data-label">${key.replace(/_/g, ' ').toUpperCase()}:</span>
+                        <span class="data-value">${displayValue}</span>
+                    </div>
+                `;
+            }
+
+            storageDiv.innerHTML = html;
+        }
+
+        function getSampleData() {
+            const samples = {
+                'TTP': {
+                    election_id: 'sample-election-id',
+                    crypto_params: {
+                        prime_order: '800000ff...',
+                        g1: '147d308a...',
+                        security_level: 256
+                    },
+                    status: 'active'
+                },
+                'Trustee': {
+                    trustee_id: 'sample-trustee-id',
+                    public_key: 'pk_123abc...',
+                    status: 'active',
+                    signatures_count: 0
+                },
+                'Voter': {
+                    voter_id: 'sample-voter-id',
+                    credential: 'cred_456def...',
+                    has_voted: false,
+                    status: 'registered'
+                }
+            };
+
+            return samples[CONTAINER_TYPE] || { message: 'No sample data available' };
+        }
+
+        function refreshData() {
+            loadStorageData();
+        }
+
+        // Initialize on page load
+        initPage();
+    </script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+# Trustee Container with PBC and Web UI
+FROM debian:bookworm-slim
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libgmp-dev \
+    libssl-dev \
+    wget \
+    flex \
+    bison \
+    python3 \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Build and install PBC library
+WORKDIR /tmp
+RUN wget https://crypto.stanford.edu/pbc/files/pbc-0.5.14.tar.gz && \
+    tar xzf pbc-0.5.14.tar.gz && \
+    cd pbc-0.5.14 && \
+    ./configure && \
+    make && \
+    make install && \
+    ldconfig && \
+    cd .. && \
+    rm -rf pbc-0.5.14*
+
+# Create app directory
+WORKDIR /app
+
+# Copy crypto library
+COPY crypto /app/crypto
+WORKDIR /app/crypto
+RUN make clean && make
+RUN cp /app/crypto/libevoting_crypto.so /usr/local/lib/ && ldconfig
+
+# Copy container UI
+WORKDIR /app
+COPY container-ui /app/ui
+
+# Create storage directory
+RUN mkdir -p /app/storage
+
+# Set environment variables (will be overridden at runtime)
+ENV CONTAINER_TYPE=Trustee
+ENV API_PORT=8000
+ENV UI_PORT=8001
+ENV PYTHONUNBUFFERED=1
+
+# Expose all possible trustee ports (10000-10019 = 10 trustees max)
+EXPOSE 10000 10001 10002 10003 10004 10005 10006 10007 10008 10009 \
+       10010 10011 10012 10013 10014 10015 10016 10017 10018 10019
+
+# Start script
+COPY scripts/start-trustee.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+CMD ["/app/start.sh"]

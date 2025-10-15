@@ -1,0 +1,65 @@
+# Voter Container with PBC and Web UI
+FROM debian:bookworm-slim
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libgmp-dev \
+    libssl-dev \
+    wget \
+    flex \
+    bison \
+    python3 \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Build and install PBC library
+WORKDIR /tmp
+RUN wget https://crypto.stanford.edu/pbc/files/pbc-0.5.14.tar.gz && \
+    tar xzf pbc-0.5.14.tar.gz && \
+    cd pbc-0.5.14 && \
+    ./configure && \
+    make && \
+    make install && \
+    ldconfig && \
+    cd .. && \
+    rm -rf pbc-0.5.14*
+
+# Create app directory
+WORKDIR /app
+
+# Copy crypto library
+COPY crypto /app/crypto
+WORKDIR /app/crypto
+RUN make clean && make
+RUN cp /app/crypto/libevoting_crypto.so /usr/local/lib/ && ldconfig
+
+# Copy container UI
+WORKDIR /app
+COPY container-ui /app/ui
+
+# Create storage directory
+RUN mkdir -p /app/storage
+
+# Set environment variables (will be overridden at runtime)
+ENV CONTAINER_TYPE=Voter
+ENV API_PORT=10000
+ENV UI_PORT=10001
+ENV PYTHONUNBUFFERED=1
+
+# Expose voter ports starting after trustees (assume max 10 trustees = ports up to 10019)
+# Voters start from 10020 onwards (support up to 40 voters)
+EXPOSE 10020 10021 10022 10023 10024 10025 10026 10027 10028 10029 \
+       10030 10031 10032 10033 10034 10035 10036 10037 10038 10039 \
+       10040 10041 10042 10043 10044 10045 10046 10047 10048 10049 \
+       10050 10051 10052 10053 10054 10055 10056 10057 10058 10059 \
+       10060 10061 10062 10063 10064 10065 10066 10067 10068 10069 \
+       10070 10071 10072 10073 10074 10075 10076 10077 10078 10079 \
+       10080 10081 10082 10083 10084 10085 10086 10087 10088 10089 \
+       10090 10091 10092 10093 10094 10095 10096 10097 10098 10099
+
+# Start script
+COPY scripts/start-voter.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+CMD ["/app/start.sh"]

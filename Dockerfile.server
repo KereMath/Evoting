@@ -1,0 +1,78 @@
+# Multi-stage build for main server with PBC, Rust, and PostgreSQL
+FROM rust:1.83-bookworm AS builder
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libgmp-dev \
+    libssl-dev \
+    flex \
+    bison \
+    wget \
+    pkg-config \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Build and install PBC (Pairing-Based Cryptography) library
+WORKDIR /tmp
+RUN wget https://crypto.stanford.edu/pbc/files/pbc-0.5.14.tar.gz && \
+    tar xzf pbc-0.5.14.tar.gz && \
+    cd pbc-0.5.14 && \
+    ./configure && \
+    make && \
+    make install && \
+    ldconfig && \
+    cd .. && \
+    rm -rf pbc-0.5.14*
+
+# Build crypto library
+WORKDIR /app/crypto
+COPY crypto ./
+RUN make clean && make
+
+# Install crypto library system-wide so Rust can link against it
+RUN cp /app/crypto/libevoting_crypto.so /usr/local/lib/ && ldconfig
+
+# Set up Rust backend workspace
+WORKDIR /app
+COPY backend/Cargo.toml backend/Cargo.lock* ./
+COPY backend/src ./src
+COPY backend/build.rs ./
+
+# Build Rust backend
+RUN cargo build --release
+
+# Final stage
+FROM debian:bookworm-slim
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    libgmp10 \
+    libssl3 \
+    postgresql-client \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy PBC library from builder
+COPY --from=builder /usr/local/lib/libpbc* /usr/local/lib/
+COPY --from=builder /usr/local/include/pbc /usr/local/include/pbc
+
+# Copy crypto shared library
+COPY --from=builder /app/crypto/libevoting_crypto.so /usr/local/lib/
+RUN ldconfig
+
+# Copy Rust backend binary
+COPY --from=builder /app/target/release/evoting-server /usr/local/bin/evoting-server
+
+# Create app directory
+WORKDIR /app
+
+# Expose ports
+EXPOSE 8080
+
+# Set environment variables
+ENV RUST_LOG=info
+ENV DATABASE_URL=postgresql://evoting:evoting@postgres:5432/evoting_db
+
+# Run the server
+CMD ["evoting-server"]
