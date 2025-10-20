@@ -6,7 +6,35 @@
 extern "C" {
 
 CryptoParams* setup_crypto_params(int security_level) {
-    TIACParams params = setupParams();
+    // Generate PBC parameters first and save them before initializing pairing
+    pbc_param_t par;
+    pbc_param_init_a_gen(par, 256, 512);
+
+    // Convert parameters to string before creating pairing
+    char pairing_str[8192];
+    memset(pairing_str, 0, sizeof(pairing_str)); // Initialize to zeros
+    FILE* pairing_mem = fmemopen(pairing_str, sizeof(pairing_str) - 1, "w"); // Leave room for null terminator
+    char* pairing_params_str = NULL;
+    if (pairing_mem) {
+        pbc_param_out_str(pairing_mem, par);
+        fclose(pairing_mem);
+        // Ensure null termination
+        pairing_str[sizeof(pairing_str) - 1] = '\0';
+        pairing_params_str = strdup(pairing_str);
+    }
+
+    // Now initialize the params using the pbc_param
+    TIACParams params;
+    mpz_init(params.prime_order);
+    pairing_init_pbc_param(params.pairing, par);
+    mpz_set(params.prime_order, params.pairing->r);
+    element_init_G1(params.g1, params.pairing);
+    element_init_G1(params.h1, params.pairing);
+    element_init_G2(params.g2, params.pairing);
+    element_random(params.g1);
+    element_random(params.h1);
+    element_random(params.g2);
+    pbc_param_clear(par);
 
     CryptoParams* result = (CryptoParams*)malloc(sizeof(CryptoParams));
 
@@ -45,8 +73,13 @@ CryptoParams* setup_crypto_params(int security_level) {
     }
     free(h1_bytes);
 
-    // Store pairing type as simple string
-    result->pairing_params = strdup("type a\nq 8780710799663312522437781984754049815806883199414208211028653399266475630880222957078625179422662221423155858769582317459277713367317481324925129998224791\nh 12016012264891146079388821366740534204802954401251311822919615131047207289359704531102844802183906537786776\nr 730750818665451621361119245571504901405976559617\nexp2 159\nexp1 107\nsign1 1\nsign0 1");
+    // Use the pairing params string we saved earlier
+    if (pairing_params_str) {
+        result->pairing_params = pairing_params_str;
+    } else {
+        // Fallback to a default if fmemopen failed
+        result->pairing_params = strdup("type a\nq 8780710799663312522437781984754049815806883199414208211028653399266475630880222957078625179422662221423155858769582317459277713367317481324925129998224791\nh 12016012264891146079388821366740534204802954401251311822919615131047207289359704531102844802183906537786776\nr 730750818665451621361119245571504901405976559617\nexp2 159\nexp1 107\nsign1 1\nsign0 1");
+    }
 
     result->security_level = security_level;
 

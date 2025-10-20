@@ -80,4 +80,11 @@ export const setupCrypto = (electionId, securityLevel = 256) =>
 export const getCryptoParameters = (electionId) =>
   api.get(`/api/crypto/parameters/${electionId}`);
 
+// Key Generation (DKG)
+export const startKeygen = (electionId, threshold = null) =>
+  api.post(`/api/elections/${electionId}/keygen/start`, { threshold });
+
+export const getKeygenStatus = (electionId) =>
+  api.get(`/api/elections/${electionId}/keygen/status`);
+
 export default api;

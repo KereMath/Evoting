@@ -34,6 +34,9 @@ thiserror = "1.0"
 # Docker API
 bollard = "0.16"
 
+# HTTP Client (for DKG communication with trustees)
+reqwest = { version = "0.11", features = ["json"] }
+
 # Environment
 dotenv = "0.15"
 

@@ -16,7 +16,13 @@ CONTAINER_TYPE = os.getenv('CONTAINER_TYPE', 'Unknown')
 API_PORT = os.getenv('API_PORT', '8000')
 UI_PORT = int(os.getenv('UI_PORT', '8001'))
 CONTAINER_ID = os.getenv('CONTAINER_ID', 'unknown')
-STORAGE_FILE = os.getenv('STORAGE_FILE', '/app/storage/data.json')
+
+# Set storage file based on container type
+if CONTAINER_TYPE == 'Trustee':
+    STORAGE_FILE = '/app/storage/dkg_state.json'  # Trustees use DKG state
+else:
+    STORAGE_FILE = os.getenv('STORAGE_FILE', '/app/storage/data.json')
+
 ELECTION_ID = os.getenv('ELECTION_ID', 'unknown')
 BACKEND_URL = os.getenv('BACKEND_URL', 'http://host.docker.internal:8080')
 
@@ -33,6 +39,22 @@ def fetch_crypto_parameters():
                 return data
     except Exception as e:
         print(f"⚠️  Failed to fetch crypto parameters: {e}")
+
+    return None
+
+def fetch_keygen_status():
+    """Fetch DKG/keygen status from backend API including MVK and VKs"""
+    if ELECTION_ID == 'unknown':
+        return None
+
+    try:
+        url = f"{BACKEND_URL}/api/elections/{ELECTION_ID}/keygen/status"
+        with urllib.request.urlopen(url, timeout=5) as response:
+            if response.status == 200:
+                data = json.loads(response.read().decode('utf-8'))
+                return data
+    except Exception as e:
+        print(f"⚠️  Failed to fetch keygen status: {e}")
 
     return None
 
@@ -88,6 +110,62 @@ class ContainerUIHandler(BaseHTTPRequestHandler):
                 data['crypto_parameters_loaded'] = True
             else:
                 data['crypto_parameters_loaded'] = False
+
+            # Fetch keygen status to get MVK and VKs
+            keygen_status = fetch_keygen_status()
+            if keygen_status and keygen_status.get('status') == 'completed':
+                # Add MVK (available for both Trustees and Voters)
+                if keygen_status.get('mvk'):
+                    data['mvk'] = keygen_status['mvk']
+
+                # For TRUSTEES: Add OTHER trustees' VKs (exclude self)
+                if CONTAINER_TYPE == 'Trustee':
+                    my_trustee_id = os.getenv('TRUSTEE_ID', 'unknown')
+                    other_trustees_vks = []
+
+                    if keygen_status.get('trustees_ready'):
+                        for trustee in keygen_status['trustees_ready']:
+                            # Skip self
+                            if trustee.get('trustee_id') == my_trustee_id:
+                                continue
+
+                            # Only include completed trustees with VKs
+                            if trustee.get('status') == 'completed' and trustee.get('verification_key'):
+                                try:
+                                    vk_data = json.loads(trustee['verification_key']) if isinstance(trustee['verification_key'], str) else trustee['verification_key']
+                                    other_trustees_vks.append({
+                                        'index': trustee.get('trustee_index'),
+                                        'vk1': vk_data.get('vk1', ''),
+                                        'vk2': vk_data.get('vk2', ''),
+                                        'vk3': vk_data.get('vk3', '')
+                                    })
+                                except:
+                                    pass
+
+                    if other_trustees_vks:
+                        data['other_trustees_vks'] = other_trustees_vks
+
+                # For VOTERS: Add ALL trustees' VKs
+                elif CONTAINER_TYPE == 'Voter':
+                    all_trustees_vks = []
+
+                    if keygen_status.get('trustees_ready'):
+                        for trustee in keygen_status['trustees_ready']:
+                            # Only include completed trustees with VKs
+                            if trustee.get('status') == 'completed' and trustee.get('verification_key'):
+                                try:
+                                    vk_data = json.loads(trustee['verification_key']) if isinstance(trustee['verification_key'], str) else trustee['verification_key']
+                                    all_trustees_vks.append({
+                                        'index': trustee.get('trustee_index'),
+                                        'vk1': vk_data.get('vk1', ''),
+                                        'vk2': vk_data.get('vk2', ''),
+                                        'vk3': vk_data.get('vk3', '')
+                                    })
+                                except:
+                                    pass
+
+                    if all_trustees_vks:
+                        data['all_trustees_vks'] = all_trustees_vks
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')

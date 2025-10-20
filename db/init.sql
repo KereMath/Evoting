@@ -140,3 +140,92 @@ COMMENT ON TABLE voters IS 'Registered voters with their DIDs and credentials';
 COMMENT ON TABLE blind_signatures IS 'Tracks blind signature issuance from trustees to voters';
 COMMENT ON TABLE votes IS 'Anonymized votes with zero-knowledge proofs';
 COMMENT ON TABLE system_events IS 'Audit log for system events';
+
+-- ============================================================================
+-- DKG (Distributed Key Generation) Tables
+-- SECURITY NOTE: Private keys (sgk) are NEVER stored in database!
+-- They remain ONLY in trustee containers, encrypted at rest.
+-- ============================================================================
+
+-- Master Verification Key (Election Public Key)
+CREATE TABLE IF NOT EXISTS master_verification_keys (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    election_id UUID NOT NULL UNIQUE REFERENCES elections(id) ON DELETE CASCADE,
+    alpha2 TEXT NOT NULL,  -- g2^x (aggregated from all qualified trustees)
+    beta2 TEXT NOT NULL,   -- g2^y (aggregated from all qualified trustees)
+    beta1 TEXT NOT NULL,   -- g1^y (aggregated from all qualified trustees)
+    qualified_trustee_count INTEGER NOT NULL,
+    threshold INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Trustee Verification Keys (Public keys for each trustee)
+CREATE TABLE IF NOT EXISTS trustee_verification_keys (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    trustee_id UUID NOT NULL UNIQUE REFERENCES trustees(id) ON DELETE CASCADE,
+    election_id UUID NOT NULL REFERENCES elections(id) ON DELETE CASCADE,
+    vk1 TEXT NOT NULL,  -- g2^x_i
+    vk2 TEXT NOT NULL,  -- g2^y_i
+    vk3 TEXT NOT NULL,  -- g1^y_i
+    is_qualified BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- DKG Session Tracking
+CREATE TABLE IF NOT EXISTS dkg_sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    election_id UUID NOT NULL REFERENCES elections(id) ON DELETE CASCADE,
+    status VARCHAR(50) NOT NULL,  -- 'in_progress', 'completed', 'failed'
+    current_step INTEGER DEFAULT 0,
+    total_trustees INTEGER NOT NULL,
+    threshold INTEGER NOT NULL,
+    qualified_trustees JSONB,
+    disqualified_trustees JSONB,
+    started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    error_message TEXT,
+    UNIQUE(election_id)
+);
+
+-- DKG Trustee Status
+CREATE TABLE IF NOT EXISTS dkg_trustee_status (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    session_id UUID NOT NULL REFERENCES dkg_sessions(id) ON DELETE CASCADE,
+    trustee_id UUID NOT NULL REFERENCES trustees(id) ON DELETE CASCADE,
+    current_step INTEGER DEFAULT 0,
+    status VARCHAR(50) NOT NULL,  -- 'pending', 'in_progress', 'completed', 'failed'
+    last_heartbeat TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    error_message TEXT,
+    UNIQUE(session_id, trustee_id)
+);
+
+-- DKG Complaints
+CREATE TABLE IF NOT EXISTS dkg_complaints (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    session_id UUID NOT NULL REFERENCES dkg_sessions(id) ON DELETE CASCADE,
+    complainer_trustee_id UUID NOT NULL REFERENCES trustees(id) ON DELETE CASCADE,
+    accused_trustee_id UUID NOT NULL REFERENCES trustees(id) ON DELETE CASCADE,
+    complaint_type VARCHAR(100) NOT NULL,
+    details TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for DKG tables
+CREATE INDEX IF NOT EXISTS idx_mvk_election ON master_verification_keys(election_id);
+CREATE INDEX IF NOT EXISTS idx_tvk_trustee ON trustee_verification_keys(trustee_id);
+CREATE INDEX IF NOT EXISTS idx_tvk_election ON trustee_verification_keys(election_id);
+CREATE INDEX IF NOT EXISTS idx_dkg_session_election ON dkg_sessions(election_id);
+CREATE INDEX IF NOT EXISTS idx_dkg_session_status ON dkg_sessions(status);
+CREATE INDEX IF NOT EXISTS idx_dkg_trustee_status_session ON dkg_trustee_status(session_id);
+CREATE INDEX IF NOT EXISTS idx_dkg_trustee_status_trustee ON dkg_trustee_status(trustee_id);
+CREATE INDEX IF NOT EXISTS idx_dkg_complaints_session ON dkg_complaints(session_id);
+CREATE INDEX IF NOT EXISTS idx_dkg_complaints_accused ON dkg_complaints(accused_trustee_id);
+
+-- Comments
+COMMENT ON TABLE master_verification_keys IS 'Election public key (MVK) - PUBLIC DATA';
+COMMENT ON TABLE trustee_verification_keys IS 'Trustee public verification keys - PUBLIC DATA';
+COMMENT ON TABLE dkg_sessions IS 'DKG protocol execution tracking';
+COMMENT ON TABLE dkg_trustee_status IS 'Individual trustee DKG progress';
+COMMENT ON TABLE dkg_complaints IS 'DKG share verification complaints';

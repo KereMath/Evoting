@@ -28,20 +28,27 @@ if [ ! -f /app/storage/data.json ]; then
 EOF
 fi
 
+# Start DKG Server in background
+echo "🔐 Starting DKG Server on port ${DKG_PORT:-8000}..."
+cd /app/ui
+python3 dkg_server.py &
+DKG_PID=$!
+
 # Start Web UI in background
 echo "🌐 Starting Web UI on port ${UI_PORT}..."
-cd /app/ui
 python3 web_server.py &
 UI_PID=$!
 
-# Wait a moment for UI to start
+# Wait a moment for servers to start
 sleep 2
 
 echo "✅ Trustee Container started successfully!"
 echo "   - Web UI: http://localhost:${UI_PORT}/"
-echo "   - API: http://localhost:${API_PORT}/"
+echo "   - DKG API: http://localhost:${DKG_PORT:-8000}/"
+echo "   - Trustee ID: ${TRUSTEE_ID}"
+echo "   - Trustee Index: ${TRUSTEE_INDEX}"
 echo ""
-echo "📊 Container ready and waiting for requests..."
+echo "📊 Container ready for DKG and voting operations..."
 
-# Keep container running
-wait $UI_PID
+# Keep container running (wait for both processes)
+wait $UI_PID $DKG_PID

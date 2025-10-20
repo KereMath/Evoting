@@ -223,6 +223,13 @@
             </div>
         </div>
 
+        <div class="card" id="dkgResultsCard" style="display: none;">
+            <div class="card-title">🔑 DKG Results</div>
+            <div id="dkgResults">
+                <div class="loading">Loading DKG results...</div>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-title">💾 Container Data</div>
             <div id="storageData">
@@ -366,6 +373,11 @@
             const keysCard = document.getElementById('keysCard');
             const keysData = document.getElementById('keysData');
 
+            // Check if this is DKG data for Trustee
+            if (CONTAINER_TYPE === 'Trustee' && data.status) {
+                displayDKGResults(data);
+            }
+
             // Remove crypto params from storage display (shown separately)
             const { crypto_parameters, crypto_parameters_loaded, public_key, private_key_stored, ...displayData } = data;
 
@@ -434,6 +446,207 @@
             }
 
             storageDiv.innerHTML = html;
+        }
+
+        function displayDKGResults(data) {
+            const dkgCard = document.getElementById('dkgResultsCard');
+            const dkgDiv = document.getElementById('dkgResults');
+
+            if (!data.status) {
+                dkgCard.style.display = 'none';
+                return;
+            }
+
+            dkgCard.style.display = 'block';
+
+            const truncate = (str, len = 60) => {
+                if (!str || str === 'null') return 'Not available';
+                const strVal = typeof str === 'object' ? JSON.stringify(str) : str.toString();
+                return strVal.length > len ? strVal.substring(0, len) + '...' : strVal;
+            };
+
+            const statusColor = {
+                'idle': '#6c757d',
+                'in_progress': '#ffc107',
+                'completed': '#28a745',
+                'failed': '#dc3545'
+            };
+
+            const statusIcon = {
+                'idle': '⏸️',
+                'in_progress': '⏳',
+                'completed': '✅',
+                'failed': '❌'
+            };
+
+            let html = `
+                <div style="background: ${statusColor[data.status] || '#6c757d'}15; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid ${statusColor[data.status] || '#6c757d'};">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-size: 18px; font-weight: 700; color: ${statusColor[data.status] || '#6c757d'};">
+                            ${statusIcon[data.status] || '•'} ${data.status === 'completed' ? 'KEYGEN COMPLETE' : 'Status: ' + data.status.toUpperCase()}
+                        </span>
+                        <span style="background: ${statusColor[data.status] || '#6c757d'}; color: white; padding: 6px 14px; border-radius: 12px; font-size: 13px; font-weight: 700;">
+                            Step ${data.current_step}/7
+                        </span>
+                    </div>
+                    <div style="font-size: 13px; color: #666;">
+                        <strong>My Index:</strong> ${data.my_index || 'N/A'} |
+                        <strong>Threshold:</strong> ${data.threshold || 'N/A'} |
+                        <strong>Total Trustees:</strong> ${data.total_trustees || 'N/A'}
+                    </div>
+                </div>
+            `;
+
+            // Show MVK if available (PUBLIC)
+            if (data.mvk) {
+                html += `
+                    <div style="background: #d1ecf1; border: 2px solid #17a2b8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <h3 style="color: #17a2b8; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center;">
+                            🔐 Master Verification Key (MVK)
+                            <span style="background: #17a2b8; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; margin-left: 10px;">PUBLIC</span>
+                        </h3>
+                        <div style="font-size: 11px; font-family: monospace; word-break: break-all; color: #0c5460;">
+                            <div style="margin-bottom: 8px;"><strong>α₂:</strong> ${truncate(data.mvk.alpha2)}</div>
+                            <div style="margin-bottom: 8px;"><strong>β₂:</strong> ${truncate(data.mvk.beta2)}</div>
+                            <div><strong>β₁:</strong> ${truncate(data.mvk.beta1)}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Show MY Verification Keys if available (PUBLIC)
+            if (data.my_verification_keys) {
+                html += `
+                    <div style="background: #d4edda; border: 2px solid #28a745; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <h3 style="color: #28a745; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center;">
+                            🔑 My Verification Keys (VK_${data.my_index})
+                            <span style="background: #28a745; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; margin-left: 10px;">PUBLIC</span>
+                        </h3>
+                        <div style="font-size: 11px; font-family: monospace; word-break: break-all; color: #155724;">
+                            <div style="margin-bottom: 8px;"><strong>VK₁:</strong> ${truncate(data.my_verification_keys.vk1)}</div>
+                            <div style="margin-bottom: 8px;"><strong>VK₂:</strong> ${truncate(data.my_verification_keys.vk2)}</div>
+                            <div><strong>VK₃:</strong> ${truncate(data.my_verification_keys.vk3)}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Show MY Signing Key if available (PRIVATE - only show that it exists)
+            if (data.my_signing_key) {
+                html += `
+                    <div style="background: #fff3cd; border: 2px solid #ffc107; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <h3 style="color: #856404; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center;">
+                            🔐 My Signing Key Share (SGK_${data.my_index})
+                            <span style="background: #ffc107; color: #000; padding: 2px 8px; border-radius: 10px; font-size: 10px; margin-left: 10px; font-weight: 600;">PRIVATE</span>
+                        </h3>
+                        <div style="font-size: 12px; color: #856404;">
+                            ✅ <strong>Signing key securely stored in this container</strong><br>
+                            <small style="color: #6c757d;">This key is used to create threshold signatures and is never shared with anyone.</small>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Show OTHER TRUSTEES' Verification Keys (PUBLIC) - for Trustees only
+            if (CONTAINER_TYPE === 'Trustee' && data.other_trustees_vks && data.other_trustees_vks.length > 0) {
+                html += `
+                    <div style="background: #e7f3ff; border: 2px solid #007bff; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <h3 style="color: #007bff; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center;">
+                            👥 OTHER TRUSTEES' VERIFICATION KEYS
+                            <span style="background: #007bff; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; margin-left: 10px;">PUBLIC</span>
+                        </h3>
+                `;
+
+                data.other_trustees_vks.forEach((trustee, idx) => {
+                    html += `
+                        <div style="background: white; border: 1px solid #dee2e6; padding: 12px; border-radius: 6px; margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <strong style="color: #495057; font-size: 13px;">Trustee ${trustee.index || idx + 1}</strong>
+                                <span style="background: #e7f3ff; color: #007bff; padding: 3px 8px; border-radius: 8px; font-size: 10px; font-weight: 600;">VK_${trustee.index || idx + 1}</span>
+                            </div>
+                            <div style="font-size: 10px; font-family: monospace; word-break: break-all; color: #6c757d;">
+                                <div style="margin-bottom: 6px;"><strong>VK₁:</strong> ${truncate(trustee.vk1, 50)}</div>
+                                <div style="margin-bottom: 6px;"><strong>VK₂:</strong> ${truncate(trustee.vk2, 50)}</div>
+                                <div><strong>VK₃:</strong> ${truncate(trustee.vk3, 50)}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                    </div>
+                `;
+            }
+
+            // Show ALL TRUSTEES' Verification Keys and MVK for VOTERS
+            if (CONTAINER_TYPE === 'Voter' && data.mvk) {
+                html += `
+                    <div style="background: #d1ecf1; border: 2px solid #17a2b8; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <h3 style="color: #17a2b8; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center;">
+                            🔐 Master Verification Key (MVK)
+                            <span style="background: #17a2b8; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; margin-left: 10px;">PUBLIC</span>
+                        </h3>
+                        <div style="font-size: 11px; font-family: monospace; word-break: break-all; color: #0c5460;">
+                            <div style="margin-bottom: 8px;"><strong>α₂:</strong> ${truncate(data.mvk.alpha2)}</div>
+                            <div style="margin-bottom: 8px;"><strong>β₂:</strong> ${truncate(data.mvk.beta2)}</div>
+                            <div><strong>β₁:</strong> ${truncate(data.mvk.beta1)}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (CONTAINER_TYPE === 'Voter' && data.all_trustees_vks && data.all_trustees_vks.length > 0) {
+                html += `
+                    <div style="background: #e7f3ff; border: 2px solid #007bff; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <h3 style="color: #007bff; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center;">
+                            👥 ALL TRUSTEES' VERIFICATION KEYS
+                            <span style="background: #007bff; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; margin-left: 10px;">PUBLIC</span>
+                        </h3>
+                `;
+
+                data.all_trustees_vks.forEach((trustee, idx) => {
+                    html += `
+                        <div style="background: white; border: 1px solid #dee2e6; padding: 12px; border-radius: 6px; margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <strong style="color: #495057; font-size: 13px;">Trustee ${trustee.index || idx + 1}</strong>
+                                <span style="background: #e7f3ff; color: #007bff; padding: 3px 8px; border-radius: 8px; font-size: 10px; font-weight: 600;">VK_${trustee.index || idx + 1}</span>
+                            </div>
+                            <div style="font-size: 10px; font-family: monospace; word-break: break-all; color: #6c757d;">
+                                <div style="margin-bottom: 6px;"><strong>VK₁:</strong> ${truncate(trustee.vk1, 50)}</div>
+                                <div style="margin-bottom: 6px;"><strong>VK₂:</strong> ${truncate(trustee.vk2, 50)}</div>
+                                <div><strong>VK₃:</strong> ${truncate(trustee.vk3, 50)}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                    </div>
+                `;
+            }
+
+            // Show qualified set if available
+            if (data.qualified_set && data.qualified_set.length > 0) {
+                html += `
+                    <div style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                        <strong style="color: #495057; font-size: 13px;">Qualified Trustees:</strong>
+                        <div style="margin-top: 5px; font-family: monospace; font-size: 12px; color: #28a745;">
+                            ${data.qualified_set.join(', ')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Show complaints if any
+            if (data.complaints && data.complaints.length > 0) {
+                html += `
+                    <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 12px; border-radius: 6px;">
+                        <strong style="color: #721c24; font-size: 13px;">⚠️ Complaints: ${data.complaints.length}</strong>
+                    </div>
+                `;
+            }
+
+            dkgDiv.innerHTML = html;
         }
 
         function getSampleData() {

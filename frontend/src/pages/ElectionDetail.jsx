@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
-import { getElection, getVoters, createVoter, deleteVoter, getTrustees, createTrustee, uploadVotersCSV, setupElection, setupCrypto, getCryptoParameters } from '../services/api'
+import { getElection, getVoters, createVoter, deleteVoter, getTrustees, createTrustee, uploadVotersCSV, setupElection, setupCrypto, getCryptoParameters, startKeygen, getKeygenStatus } from '../services/api'
 
 function ElectionDetail({ onLogout }) {
   const { id } = useParams()
@@ -23,10 +23,46 @@ function ElectionDetail({ onLogout }) {
   const [cryptoSetupLoading, setCryptoSetupLoading] = useState(false)
   const [cryptoParams, setCryptoParams] = useState(null)
   const [showCryptoModal, setShowCryptoModal] = useState(false)
+  const [keygenLoading, setKeygenLoading] = useState(false)
+  const [keygenStatus, setKeygenStatus] = useState(null)
 
   useEffect(() => {
     loadElectionData()
   }, [id])
+
+  // Auto-poll DKG status when in key generation phase
+  useEffect(() => {
+    let pollInterval = null
+
+    if (election && election.phase === 6 && election.status === 'key_generation') {
+      // Start polling immediately
+      const pollStatus = async () => {
+        try {
+          const statusRes = await getKeygenStatus(id)
+          setKeygenStatus(statusRes.data)
+
+          // If completed, stop polling and reload election data
+          if (statusRes.data.status === 'completed') {
+            if (pollInterval) clearInterval(pollInterval)
+            loadElectionData()
+          }
+        } catch (error) {
+          console.error('Failed to poll keygen status:', error)
+        }
+      }
+
+      // Poll immediately
+      pollStatus()
+
+      // Then poll every 2 seconds
+      pollInterval = setInterval(pollStatus, 2000)
+    }
+
+    // Cleanup
+    return () => {
+      if (pollInterval) clearInterval(pollInterval)
+    }
+  }, [election, id])
 
   const loadElectionData = async () => {
     try {
@@ -49,6 +85,16 @@ function ElectionDetail({ onLogout }) {
           setCryptoParams(cryptoRes.data)
         } catch (error) {
           console.error('Failed to load crypto parameters:', error)
+        }
+      }
+
+      // Load DKG status if phase >= 6
+      if (electionRes.data.phase >= 6) {
+        try {
+          const statusRes = await getKeygenStatus(id)
+          setKeygenStatus(statusRes.data)
+        } catch (error) {
+          console.error('Failed to load keygen status:', error)
         }
       }
 
@@ -143,6 +189,43 @@ function ElectionDetail({ onLogout }) {
     }
   }
 
+  const handleStartKeygen = async () => {
+    if (!window.confirm('Are you sure you want to start Distributed Key Generation? All trustee containers will participate in the DKG protocol.')) {
+      return
+    }
+
+    setKeygenLoading(true)
+    try {
+      const response = await startKeygen(id)
+      alert(response.data.message)
+      loadElectionData()
+
+      // Poll for status
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusRes = await getKeygenStatus(id)
+          setKeygenStatus(statusRes.data)
+
+          if (statusRes.data.status === 'completed') {
+            clearInterval(pollInterval)
+            alert('Key generation completed successfully!')
+            loadElectionData()
+          }
+        } catch (error) {
+          console.error('Failed to poll keygen status:', error)
+        }
+      }, 3000)
+
+      // Clear polling after 5 minutes
+      setTimeout(() => clearInterval(pollInterval), 300000)
+    } catch (error) {
+      console.error('Failed to start keygen:', error)
+      alert('Failed to start key generation')
+    } finally {
+      setKeygenLoading(false)
+    }
+  }
+
   const handleCsvUpload = async (e) => {
     e.preventDefault()
     if (!csvFile) {
@@ -222,7 +305,7 @@ function ElectionDetail({ onLogout }) {
           </div>
           <div className="card-body">
             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px'}}>
-              {[1, 2, 3, 4, 5].map((phase) => (
+              {[1, 2, 3, 4, 5, 6].map((phase) => (
                 <div key={phase} style={{flex: 1, display: 'flex', alignItems: 'center'}}>
                   <div style={{
                     width: '50px',
@@ -239,11 +322,11 @@ function ElectionDetail({ onLogout }) {
                   }}>
                     {phase}
                   </div>
-                  {phase !== 5 && <div style={{flex: 1, height: '4px', background: election.phase > phase ? '#27ae60' : '#ecf0f1', marginLeft: '10px'}} />}
+                  {phase !== 6 && <div style={{flex: 1, height: '4px', background: election.phase > phase ? '#27ae60' : '#ecf0f1', marginLeft: '10px'}} />}
                 </div>
               ))}
             </div>
-            <div style={{display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginTop: '10px'}}>
+            <div style={{display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px', marginTop: '10px'}}>
               <div>
                 <strong>Phase 1:</strong>
                 <p style={{fontSize: '12px', color: '#7f8c8d', margin: '5px 0'}}>Add Trustees</p>
@@ -263,6 +346,10 @@ function ElectionDetail({ onLogout }) {
               <div>
                 <strong>Phase 5:</strong>
                 <p style={{fontSize: '12px', color: '#7f8c8d', margin: '5px 0'}}>Crypto Setup</p>
+              </div>
+              <div>
+                <strong>Phase 6:</strong>
+                <p style={{fontSize: '12px', color: '#7f8c8d', margin: '5px 0'}}>Key Generation</p>
               </div>
             </div>
             {election.phase === 3 && (
@@ -293,12 +380,134 @@ function ElectionDetail({ onLogout }) {
                 </button>
               </div>
             )}
-            {election.phase >= 5 && (
+            {election.phase === 5 && (
               <div style={{marginTop: '20px'}}>
                 <div style={{padding: '12px', background: '#e8daef', border: '1px solid #9b59b6', borderRadius: '4px', marginBottom: '10px'}}>
                   <strong style={{color: '#6c3483'}}>🔐 Cryptographic Parameters Generated!</strong>
                   <p style={{fontSize: '12px', color: '#6c3483', margin: '5px 0'}}>
                     Election is ready for key generation phase
+                  </p>
+                </div>
+                <div style={{display: 'flex', gap: '10px'}}>
+                  {cryptoParams && (
+                    <button
+                      onClick={() => setShowCryptoModal(true)}
+                      className="btn"
+                      style={{flex: '1', padding: '12px', fontSize: '14px', background: '#8e44ad', color: 'white'}}
+                    >
+                      📋 View Cryptographic Parameters
+                    </button>
+                  )}
+                  <button
+                    onClick={handleStartKeygen}
+                    disabled={keygenLoading}
+                    className="btn btn-primary"
+                    style={{flex: '2', padding: '12px', fontSize: '16px', background: '#e74c3c', color: 'white'}}
+                  >
+                    {keygenLoading ? 'Starting DKG...' : '🔑 Start Key Generation (DKG)'}
+                  </button>
+                </div>
+              </div>
+            )}
+            {election.phase === 6 && election.status === 'key_generation' && (
+              <div style={{marginTop: '20px'}}>
+                <div style={{padding: '15px', background: '#fff3cd', border: '1px solid #ffc107', borderRadius: '4px', marginBottom: '15px'}}>
+                  <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px'}}>
+                    <strong style={{color: '#856404', fontSize: '16px'}}>🔄 Distributed Key Generation In Progress...</strong>
+                    {keygenStatus && (
+                      <span style={{fontSize: '14px', color: '#856404'}}>
+                        Step {keygenStatus.current_step}/7
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Progress Bar */}
+                  {keygenStatus && (
+                    <div>
+                      <div style={{
+                        width: '100%',
+                        height: '24px',
+                        background: '#f8f9fa',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        border: '1px solid #dee2e6',
+                        marginBottom: '10px'
+                      }}>
+                        <div style={{
+                          width: `${(keygenStatus.current_step / 7) * 100}%`,
+                          height: '100%',
+                          background: 'linear-gradient(90deg, #ffc107 0%, #ff9800 100%)',
+                          transition: 'width 0.5s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontWeight: 'bold',
+                          fontSize: '12px'
+                        }}>
+                          {Math.round((keygenStatus.current_step / 7) * 100)}%
+                        </div>
+                      </div>
+
+                      {/* Step Description */}
+                      <div style={{fontSize: '13px', color: '#6c757d', marginBottom: '12px'}}>
+                        <strong>Current Step:</strong>{' '}
+                        {keygenStatus.current_step === 0 && 'Initializing...'}
+                        {keygenStatus.current_step === 1 && 'Step 1: Generating polynomials and broadcasting commitments'}
+                        {keygenStatus.current_step === 2 && 'Step 2: Distributing secret shares to trustees'}
+                        {keygenStatus.current_step === 3 && 'Step 3: Verifying received shares'}
+                        {keygenStatus.current_step === 4 && 'Step 4: Broadcasting complaints (if any)'}
+                        {keygenStatus.current_step === 5 && 'Step 5: Resolving complaints and determining qualified set'}
+                        {keygenStatus.current_step === 6 && 'Step 6: Computing Master Verification Key (MVK)'}
+                        {keygenStatus.current_step === 7 && 'Step 7: Computing signing keys and verification keys'}
+                      </div>
+
+                      {/* Trustee Status */}
+                      <div style={{marginTop: '15px'}}>
+                        <strong style={{fontSize: '13px', color: '#495057', display: 'block', marginBottom: '8px'}}>
+                          Trustee Status ({keygenStatus.trustees_ready.filter(t => t.status === 'completed').length}/{keygenStatus.total_trustees} ready):
+                        </strong>
+                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px'}}>
+                          {keygenStatus.trustees_ready.map((trustee) => (
+                            <div key={trustee.trustee_id} style={{
+                              padding: '8px 12px',
+                              background: trustee.status === 'completed' ? '#d4edda' :
+                                        trustee.status === 'in_progress' ? '#fff3cd' : '#f8d7da',
+                              border: `1px solid ${trustee.status === 'completed' ? '#28a745' :
+                                                  trustee.status === 'in_progress' ? '#ffc107' : '#dc3545'}`,
+                              borderRadius: '4px',
+                              fontSize: '12px'
+                            }}>
+                              <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                                <span style={{fontWeight: 'bold'}}>
+                                  {trustee.status === 'completed' && '✅ '}
+                                  {trustee.status === 'in_progress' && '⏳ '}
+                                  {trustee.status === 'failed' && '❌ '}
+                                  {trustee.name}
+                                </span>
+                                <span style={{fontSize: '11px', color: '#6c757d'}}>
+                                  Step {trustee.current_step}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <p style={{fontSize: '12px', color: '#856404', margin: '12px 0 0 0'}}>
+                    ℹ️ This process may take 1-2 minutes. Trustees are executing the Pedersen DKG protocol...
+                  </p>
+                </div>
+              </div>
+            )}
+            {election.phase >= 6 && election.status !== 'key_generation' && (
+              <div style={{marginTop: '20px'}}>
+                <div style={{padding: '12px', background: '#d4edda', border: '1px solid #28a745', borderRadius: '4px', marginBottom: '10px'}}>
+                  <strong style={{color: '#155724'}}>✅ Key Generation Complete!</strong>
+                  <p style={{fontSize: '12px', color: '#155724', margin: '5px 0'}}>
+                    Master Verification Key (MVK) has been generated by trustees
                   </p>
                 </div>
                 {cryptoParams && (
@@ -314,6 +523,101 @@ function ElectionDetail({ onLogout }) {
             )}
           </div>
         </div>
+
+        {/* DKG Results - Public Keys (MVK and VKs) */}
+        {election.phase >= 6 && keygenStatus && keygenStatus.mvk && (
+          <div className="card" style={{marginTop: '20px'}}>
+            <div className="card-header" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white'}}>
+              <h2 className="card-title">🔑 DKG Results - Public Keys</h2>
+              <span style={{fontSize: '12px', opacity: 0.9}}>
+                These keys are public and visible to all participants
+              </span>
+            </div>
+            <div className="card-body">
+              {/* Master Verification Key (MVK) */}
+              <div style={{marginBottom: '20px', padding: '15px', background: '#f8f9fa', borderRadius: '8px', border: '2px solid #667eea'}}>
+                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px'}}>
+                  <strong style={{color: '#667eea', fontSize: '16px'}}>
+                    🔐 Master Verification Key (MVK)
+                  </strong>
+                  <span style={{fontSize: '11px', background: '#667eea', color: 'white', padding: '4px 8px', borderRadius: '4px'}}>
+                    PUBLIC
+                  </span>
+                </div>
+                <pre style={{
+                  background: 'white',
+                  padding: '12px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontFamily: 'monospace',
+                  overflow: 'auto',
+                  maxHeight: '150px',
+                  border: '1px solid #dee2e6',
+                  margin: 0
+                }}>
+                  {keygenStatus.mvk ? JSON.stringify(keygenStatus.mvk, null, 2) : 'Not yet generated'}
+                </pre>
+                <p style={{fontSize: '12px', color: '#6c757d', margin: '8px 0 0 0'}}>
+                  ℹ️ Used to verify threshold signatures from qualified trustees
+                </p>
+              </div>
+
+              {/* Trustee Verification Keys (VKs) */}
+              <div>
+                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px'}}>
+                  <strong style={{color: '#495057', fontSize: '15px'}}>
+                    📋 Trustee Verification Keys (VK_i)
+                  </strong>
+                  <span style={{fontSize: '11px', background: '#28a745', color: 'white', padding: '4px 8px', borderRadius: '4px'}}>
+                    PUBLIC
+                  </span>
+                </div>
+
+                {keygenStatus.trustees_ready && keygenStatus.trustees_ready.filter(t => t.status === 'completed' && t.verification_key).length > 0 ? (
+                  <div style={{display: 'grid', gap: '12px'}}>
+                    {keygenStatus.trustees_ready.filter(t => t.status === 'completed' && t.verification_key).map((trustee, idx) => (
+                      <div key={trustee.trustee_id} style={{
+                        padding: '12px',
+                        background: '#fff',
+                        border: '1px solid #dee2e6',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px'}}>
+                          <span style={{fontWeight: 'bold', color: '#495057'}}>
+                            {trustee.name} <span style={{color: '#6c757d', fontSize: '12px'}}>(Index {trustee.trustee_index})</span>
+                          </span>
+                          <span style={{fontSize: '10px', background: '#e7f3ff', color: '#0066cc', padding: '3px 6px', borderRadius: '3px'}}>
+                            VK_{idx + 1}
+                          </span>
+                        </div>
+                        <pre style={{
+                          background: '#f8f9fa',
+                          padding: '8px',
+                          borderRadius: '4px',
+                          fontSize: '10px',
+                          fontFamily: 'monospace',
+                          overflow: 'auto',
+                          maxHeight: '100px',
+                          margin: 0
+                        }}>
+                          {trustee.verification_key || 'Not available'}
+                        </pre>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{color: '#6c757d', fontSize: '13px', padding: '12px', background: '#f8f9fa', borderRadius: '4px'}}>
+                    No verification keys available yet
+                  </p>
+                )}
+
+                <p style={{fontSize: '12px', color: '#6c757d', margin: '12px 0 0 0', padding: '10px', background: '#e7f3ff', borderRadius: '4px', border: '1px solid #bee5eb'}}>
+                  ℹ️ <strong>Note:</strong> Private signing keys (SGK_i) are stored securely within each trustee's container and are never shared.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="stats-grid">
           <div className="stat-card">

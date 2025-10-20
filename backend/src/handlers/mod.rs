@@ -6,3 +6,4 @@ pub mod events;
 pub mod monitoring;
 pub mod orchestration;
 pub mod crypto_setup;
+pub mod keygen;

@@ -12,11 +12,12 @@ SOURCES = setup.cpp ffi_wrapper.cpp keygen.cpp didgen.cpp prepareblindsign.cpp b
 # Object files
 OBJECTS = $(SOURCES:.cpp=.o)
 
-# Output library
+# Output library and CLI
 TARGET = libevoting_crypto.so
+DKG_CLI = dkg_cli
 
 # Default target
-all: $(TARGET)
+all: $(TARGET) $(DKG_CLI)
 
 # Build shared library
 $(TARGET): $(OBJECTS)
@@ -26,9 +27,13 @@ $(TARGET): $(OBJECTS)
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+# Build DKG CLI executable
+$(DKG_CLI): dkg_cli.cpp $(OBJECTS)
+	$(CXX) $(CXXFLAGS) -o $@ $< $(OBJECTS) $(LIBS)
+
 # Clean build files
 clean:
-	rm -f $(OBJECTS) $(TARGET)
+	rm -f $(OBJECTS) $(TARGET) $(DKG_CLI)
 
 # Install library (optional)
 install: $(TARGET)

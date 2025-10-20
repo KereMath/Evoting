@@ -1,0 +1,5 @@
+cargo:rustc-link-search=native=/app/crypto
+cargo:rustc-link-search=native=/usr/local/lib
+cargo:rustc-link-lib=dylib=evoting_crypto
+cargo:rustc-link-lib=dylib=pbc
+cargo:rustc-link-lib=dylib=gmp

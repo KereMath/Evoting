@@ -38,6 +38,9 @@ RUN cp /app/crypto/libevoting_crypto.so /usr/local/lib/ && ldconfig
 WORKDIR /app
 COPY container-ui /app/ui
 
+# Install Python dependencies for DKG server
+RUN pip3 install --no-cache-dir requests --break-system-packages
+
 # Create storage directory
 RUN mkdir -p /app/storage
 
@@ -45,6 +48,7 @@ RUN mkdir -p /app/storage
 ENV CONTAINER_TYPE=Trustee
 ENV API_PORT=8000
 ENV UI_PORT=8001
+ENV DKG_PORT=8000
 ENV PYTHONUNBUFFERED=1
 
 # Expose all possible trustee ports (10000-10019 = 10 trustees max)

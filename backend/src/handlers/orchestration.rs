@@ -119,48 +119,15 @@ pub async fn setup_election(
 
     tracing::info!("Found {} trustees and {} voters", trustees.len(), voters.len());
 
-    // Create TTP container
-    let ttp_port = 9000;
-    let ttp_container_name = format!("ttp-{}", election_id);
-
-    tracing::info!("Creating TTP container: {}", ttp_container_name);
-
-    let ttp_container_id = create_ttp_container(
-        &docker,
-        &ttp_container_name,
-        &network_name,
-        ttp_port,
-        &election_id.to_string(),
-    ).await?;
-
-    tracing::info!("TTP container created: {}", ttp_container_id);
-
-    // Update election with TTP info
+    // Update election with network info (no TTP needed for DKG)
     sqlx::query(
-        "UPDATE elections SET ttp_port = $1, docker_network = $2, phase = 4 WHERE id = $3"
+        "UPDATE elections SET docker_network = $1, phase = 4 WHERE id = $2"
     )
-    .bind(ttp_port)
     .bind(&network_name)
     .bind(&election_id)
     .execute(&state.db)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    // Log TTP creation
-    let _ = sqlx::query(
-        "INSERT INTO system_events (event_type, entity_type, entity_id, data) VALUES ($1, $2, $3, $4)"
-    )
-    .bind("ttp_container_created")
-    .bind("container")
-    .bind(&election_id)
-    .bind(serde_json::json!({
-        "container_id": &ttp_container_id,
-        "container_name": &ttp_container_name,
-        "port": ttp_port,
-        "network": &network_name
-    }))
-    .execute(&state.db)
-    .await;
 
     let mut trustee_containers = Vec::new();
     let mut port_counter = 10000;
@@ -183,17 +150,29 @@ pub async fn setup_election(
                 &trustee.id.to_string(),
                 &trustee.name,
                 &election_id.to_string(),
-                &ttp_container_name,
             ).await?;
 
             tracing::info!("Trustee container created: {}", container_id);
 
-            // Update trustee with Docker info
+            // Get container IP address from network
+            let container_ip = docker.inspect_container(&container_id, None)
+                .await
+                .ok()
+                .and_then(|info| info.network_settings)
+                .and_then(|ns| ns.networks)
+                .and_then(|networks| networks.get(&network_name).cloned())
+                .and_then(|network| network.ip_address)
+                .unwrap_or_else(|| "unknown".to_string());
+
+            tracing::info!("Trustee container IP: {}", container_ip);
+
+            // Update trustee with Docker info including IP address
             sqlx::query(
-                "UPDATE trustees SET docker_port = $1, container_id = $2 WHERE id = $3"
+                "UPDATE trustees SET docker_port = $1, container_id = $2, ip_address = $3 WHERE id = $4"
             )
             .bind(container_port)
             .bind(&container_id)
+            .bind(&container_ip)
             .bind(&trustee.id)
             .execute(&state.db)
             .await
@@ -248,7 +227,6 @@ pub async fn setup_election(
             &voter.id.to_string(),
             &voter.voter_id,
             &election_id.to_string(),
-            &ttp_container_name,
         ).await?;
 
         tracing::info!("Voter container created: {}", container_id);
@@ -296,89 +274,16 @@ pub async fn setup_election(
     Ok(Json(SetupResponse {
         success: true,
         message: format!(
-            "Election setup complete! Created TTP, {} trustee containers, and {} voter containers. All containers are running with PBC library.",
+            "Election setup complete! Created {} trustee containers and {} voter containers. Ready for DKG.",
             trustee_containers.len(),
             voter_containers.len()
         ),
-        ttp_port,
-        ttp_container_id: ttp_container_id.clone(),
+        ttp_port: 0,  // Not used with DKG
+        ttp_container_id: String::new(),  // Not used with DKG
         trustee_containers,
         voter_containers,
         network_name,
     }))
-}
-
-async fn create_ttp_container(
-    docker: &Docker,
-    container_name: &str,
-    network_name: &str,
-    port: i32,
-    election_id: &str,
-) -> Result<String, StatusCode> {
-    let election_id_env = format!("ELECTION_ID={}", election_id);
-    let api_port_env = format!("API_PORT={}", port);
-    let ui_port_env = format!("UI_PORT={}", port + 1);
-    let container_type_env = "CONTAINER_TYPE=TTP".to_string();
-
-    let env: Vec<&str> = vec![
-        election_id_env.as_str(),
-        api_port_env.as_str(),
-        ui_port_env.as_str(),
-        container_type_env.as_str(),
-    ];
-
-    let mut port_bindings = HashMap::new();
-    // API port
-    port_bindings.insert(
-        format!("{}/tcp", port),
-        Some(vec![PortBinding {
-            host_ip: Some("0.0.0.0".to_string()),
-            host_port: Some(port.to_string()),
-        }]),
-    );
-    // UI port
-    port_bindings.insert(
-        format!("{}/tcp", port + 1),
-        Some(vec![PortBinding {
-            host_ip: Some("0.0.0.0".to_string()),
-            host_port: Some((port + 1).to_string()),
-        }]),
-    );
-
-    let host_config = HostConfig {
-        port_bindings: Some(port_bindings),
-        ..Default::default()
-    };
-
-    let config = Config {
-        image: Some("evoting-ttp:latest"),
-        env: Some(env),
-        host_config: Some(host_config),
-        ..Default::default()
-    };
-
-    let options = CreateContainerOptions {
-        name: container_name,
-        ..Default::default()
-    };
-
-    let container = docker.create_container(Some(options), config)
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to create TTP container: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    docker.start_container(&container.id, None::<StartContainerOptions<String>>)
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to start TTP container: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    tracing::info!("TTP container {} started successfully", container.id);
-
-    Ok(container.id)
 }
 
 async fn create_trustee_container(
@@ -389,7 +294,6 @@ async fn create_trustee_container(
     trustee_id: &str,
     trustee_name: &str,
     election_id: &str,
-    ttp_host: &str,
 ) -> Result<String, StatusCode> {
     let trustee_id_env = format!("TRUSTEE_ID={}", trustee_id);
     let trustee_name_env = format!("TRUSTEE_NAME={}", trustee_name);
@@ -397,7 +301,6 @@ async fn create_trustee_container(
     let api_port_env = format!("API_PORT={}", port);
     let ui_port_env = format!("UI_PORT={}", port + 1);
     let container_type_env = "CONTAINER_TYPE=Trustee".to_string();
-    let ttp_host_env = format!("TTP_HOST={}", ttp_host);
 
     let env: Vec<&str> = vec![
         trustee_id_env.as_str(),
@@ -406,7 +309,6 @@ async fn create_trustee_container(
         api_port_env.as_str(),
         ui_port_env.as_str(),
         container_type_env.as_str(),
-        ttp_host_env.as_str(),
     ];
 
     let mut port_bindings = HashMap::new();
@@ -429,6 +331,7 @@ async fn create_trustee_container(
 
     let host_config = HostConfig {
         port_bindings: Some(port_bindings),
+        network_mode: Some(network_name.to_string()),  // Connect to election network
         ..Default::default()
     };
 
@@ -471,7 +374,6 @@ async fn create_voter_container(
     voter_id: &str,
     tc_id: &str,
     election_id: &str,
-    ttp_host: &str,
 ) -> Result<String, StatusCode> {
     let voter_id_env = format!("VOTER_ID={}", voter_id);
     let tc_id_env = format!("TC_ID={}", tc_id);
@@ -479,7 +381,6 @@ async fn create_voter_container(
     let api_port_env = format!("API_PORT={}", port);
     let ui_port_env = format!("UI_PORT={}", port + 1);
     let container_type_env = "CONTAINER_TYPE=Voter".to_string();
-    let ttp_host_env = format!("TTP_HOST={}", ttp_host);
 
     let env: Vec<&str> = vec![
         voter_id_env.as_str(),
@@ -488,7 +389,6 @@ async fn create_voter_container(
         api_port_env.as_str(),
         ui_port_env.as_str(),
         container_type_env.as_str(),
-        ttp_host_env.as_str(),
     ];
 
     let mut port_bindings = HashMap::new();
@@ -511,6 +411,7 @@ async fn create_voter_container(
 
     let host_config = HostConfig {
         port_bindings: Some(port_bindings),
+        network_mode: Some(network_name.to_string()),  // Connect to election network
         ..Default::default()
     };
 
@@ -579,17 +480,7 @@ pub async fn cleanup_election(
     .await
     .unwrap_or_default();
 
-    // Stop and remove TTP container
-    let ttp_container_name = format!("ttp-{}", election_id);
-    match stop_and_remove_container(&docker, &ttp_container_name).await {
-        Ok(_) => {
-            tracing::info!("✅ TTP container stopped and removed: {}", ttp_container_name);
-            cleanup_results.push(format!("TTP: {}", ttp_container_name));
-        }
-        Err(e) => {
-            tracing::warn!("⚠️  Failed to remove TTP container: {}", e);
-        }
-    }
+    // No TTP container to remove (using DKG instead)
 
     // Stop and remove trustee containers
     for trustee in trustees.iter() {

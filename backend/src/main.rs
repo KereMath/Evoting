@@ -113,6 +113,12 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/elections/:id/crypto-setup", post(handlers::crypto_setup::crypto_setup))
         .route("/api/crypto/parameters/:id", get(handlers::crypto_setup::get_crypto_parameters))
 
+        // Key Generation (DKG)
+        .route("/api/elections/:id/keygen/start", post(handlers::keygen::start_keygen))
+        .route("/api/elections/:id/keygen/trustee-ready", post(handlers::keygen::trustee_ready))
+        .route("/api/elections/:id/keygen/status", get(handlers::keygen::get_keygen_status))
+        .route("/api/elections/:id/keygen/progress", post(handlers::keygen::report_progress))
+
         .layer(cors)
         .with_state(app_state);
 
