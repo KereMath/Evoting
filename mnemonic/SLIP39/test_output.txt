@@ -1,0 +1,122 @@
+
+running 7 tests
+Testing: 2. Mnemonic with invalid checksum (128 bits)
+Testing invalid vector 2: 2. Mnemonic with invalid checksum (128 bits)
+Testing: 1. Valid mnemonic without sharing (128 bits)
+Testing: 5. Basic sharing 2-of-3 (128 bits)
+Testing: 4. Basic sharing 2-of-3 (128 bits)
+Testing: 6. Mnemonics with different identifiers (128 bits)
+Testing valid vector 1: 1. Valid mnemonic without sharing (128 bits)
+  ✅ Correctly rejected at parse stage
+Testing invalid vector 3: 3. Mnemonic with invalid padding (128 bits)
+Reconstructing with 2 shares
+  Share 1: member_threshold=2, value_len=16
+  Share 2: member_threshold=2, value_len=16
+test test_vector_06_different_identifiers ... ok
+test test_vector_05_insufficient_shares ... ok
+test test_vector_02_invalid_checksum ... ok
+  ⚠️  Unexpectedly succeeded (should have failed)
+Testing invalid vector 5: 5. Basic sharing 2-of-3 (128 bits)
+  ✅ Correctly rejected
+Testing invalid vector 6: 6. Mnemonics with different identifiers (128 bits)
+  ✅ Correctly rejected
+test test_vector_01_valid_without_sharing_128 ... okTesting invalid vector 7: 7. Mnemonics with different iteration exponents (128 bits)
+
+  ✅ Pass
+Testing valid vector 4: 4. Basic sharing 2-of-3 (128 bits)
+test test_vector_04_basic_sharing_2of3 ... ok
+  ✅ Pass
+Testing valid vector 17: 17. Threshold number of groups and members in each group (128 bits, case 1)
+  ❌ Secret mismatch
+     Expected: 7c3397a292a5941682d7a4ae2d898d11
+     Got:      ca8c730e795c9bddbb303fe61f0d7fd9
+Testing valid vector 18: 18. Threshold number of groups and members in each group (128 bits, case 2)
+  ❌ Secret mismatch
+     Expected: 7c3397a292a5941682d7a4ae2d898d11
+     Got:      55b714910351f9add17faa5bb330f407
+Testing valid vector 19: 19. Threshold number of groups and members in each group (128 bits, case 3)
+  ❌ Secret mismatch
+     Expected: 7c3397a292a5941682d7a4ae2d898d11
+     Got:      55b714910351f9add17faa5bb330f407
+Testing valid vector 20: 20. Valid mnemonic without sharing (256 bits)
+  ✅ Pass
+Testing valid vector 23: 23. Basic sharing 2-of-3 (256 bits)
+  ⚠️  Unexpectedly succeeded (should have failed)
+Testing invalid vector 8: 8. Mnemonics with mismatching group thresholds (128 bits)
+  ✅ Correctly rejected
+Testing invalid vector 9: 9. Mnemonics with mismatching group counts (128 bits)
+  ✅ Correctly rejected
+Testing invalid vector 10: 10. Mnemonics with greater group threshold than group counts (128 bits)
+  ✅ Correctly rejected at parse stage
+Testing invalid vector 11: 11. Mnemonics with duplicate member indices (128 bits)
+  ⚠️  Unexpectedly succeeded (should have failed)
+Testing invalid vector 12: 12. Mnemonics with mismatching member thresholds (128 bits)
+  ⚠️  Unexpectedly succeeded (should have failed)
+Testing invalid vector 13: 13. Mnemonics giving an invalid digest (128 bits)
+  ⚠️  Unexpectedly succeeded (should have failed)
+Testing invalid vector 14: 14. Insufficient number of groups (128 bits, case 1)
+  ✅ Correctly rejected
+Testing invalid vector 15: 15. Insufficient number of groups (128 bits, case 2)
+  ✅ Correctly rejected
+Testing invalid vector 16: 16. Threshold number of groups, but insufficient number of members in one group (128 bits)
+  ✅ Correctly rejected
+Testing invalid vector 21: 21. Mnemonic with invalid checksum (256 bits)
+  ✅ Correctly rejected at parse stage
+Testing invalid vector 22: 22. Mnemonic with invalid padding (256 bits)
+  ✅ Pass
+Testing valid vector 36: 36. Threshold number of groups and members in each group (256 bits, case 1)
+  ⚠️  Unexpectedly succeeded (should have failed)
+Testing invalid vector 24: 24. Basic sharing 2-of-3 (256 bits)
+  ✅ Correctly rejected
+Testing invalid vector 25: 25. Mnemonics with different identifiers (256 bits)
+  ✅ Correctly rejected
+Testing invalid vector 26: 26. Mnemonics with different iteration exponents (256 bits)
+  ❌ Secret mismatch
+     Expected: 5385577c8cfc6c1a8aa0f7f10ecde0a3318493262591e78b8c14c6686167123b
+     Got:      1a7fbeb44db5578c7c7c40c53cdc68d6571a6511f272377fc42ca65f7453978a
+Testing valid vector 37: 37. Threshold number of groups and members in each group (256 bits, case 2)
+  ❌ Secret mismatch
+     Expected: 5385577c8cfc6c1a8aa0f7f10ecde0a3318493262591e78b8c14c6686167123b
+     Got:      c246e0557a68db9a6c04c876062e14e6d007f8e7977d2964e82a8d75b7fc9b8b
+Testing valid vector 38: 38. Threshold number of groups and members in each group (256 bits, case 3)
+  ❌ Secret mismatch
+     Expected: 5385577c8cfc6c1a8aa0f7f10ecde0a3318493262591e78b8c14c6686167123b
+     Got:      c246e0557a68db9a6c04c876062e14e6d007f8e7977d2964e82a8d75b7fc9b8b
+Testing valid vector 41: 41. Valid mnemonics which can detect some errors in modular arithmetic
+  ✅ Pass
+Testing valid vector 42: 42. Valid extendable mnemonic without sharing (128 bits)
+  ⚠️  Unexpectedly succeeded (should have failed)
+Testing invalid vector 27: 27. Mnemonics with mismatching group thresholds (256 bits)
+  ✅ Correctly rejected
+Testing invalid vector 28: 28. Mnemonics with mismatching group counts (256 bits)
+  ✅ Correctly rejected
+Testing invalid vector 29: 29. Mnemonics with greater group threshold than group counts (256 bits)
+  ✅ Correctly rejected at parse stage
+Testing invalid vector 30: 30. Mnemonics with duplicate member indices (256 bits)
+  ⚠️  Unexpectedly succeeded (should have failed)
+Testing invalid vector 31: 31. Mnemonics with mismatching member thresholds (256 bits)
+  ⚠️  Unexpectedly succeeded (should have failed)
+Testing invalid vector 32: 32. Mnemonics giving an invalid digest (256 bits)
+  ⚠️  Unexpectedly succeeded (should have failed)
+Testing invalid vector 33: 33. Insufficient number of groups (256 bits, case 1)
+  ✅ Correctly rejected
+Testing invalid vector 34: 34. Insufficient number of groups (256 bits, case 2)
+  ✅ Correctly rejected
+Testing invalid vector 35: 35. Threshold number of groups, but insufficient number of members in one group (256 bits)
+  ✅ Correctly rejected
+Testing invalid vector 39: 39. Mnemonic with insufficient length
+  ✅ Correctly rejected at parse stage
+Testing invalid vector 40: 40. Mnemonic with invalid master secret length
+  ✅ Pass
+Testing valid vector 43: 43. Extendable basic sharing 2-of-3 (128 bits)
+  ⚠️  Unexpectedly succeeded (should have failed)
+test test_all_invalid_vectors ... ok
+  ✅ Pass
+Testing valid vector 44: 44. Valid extendable mnemonic without sharing (256 bits)
+  ✅ Pass
+Testing valid vector 45: 45. Extendable basic sharing 2-of-3 (256 bits)
+  ✅ Pass
+test test_all_valid_vectors ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.06s
+

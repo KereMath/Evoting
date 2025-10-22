@@ -1,0 +1,10 @@
+C:\Users\user\Desktop\mnemonic\BIP39\target\debug\deps\tinytemplate-398f531d54a70c6d.d: C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tinytemplate-1.2.1\src\lib.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tinytemplate-1.2.1\src\compiler.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tinytemplate-1.2.1\src\error.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tinytemplate-1.2.1\src\instruction.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tinytemplate-1.2.1\src\syntax.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tinytemplate-1.2.1\src\template.rs
+
+C:\Users\user\Desktop\mnemonic\BIP39\target\debug\deps\libtinytemplate-398f531d54a70c6d.rmeta: C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tinytemplate-1.2.1\src\lib.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tinytemplate-1.2.1\src\compiler.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tinytemplate-1.2.1\src\error.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tinytemplate-1.2.1\src\instruction.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tinytemplate-1.2.1\src\syntax.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tinytemplate-1.2.1\src\template.rs
+
+C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tinytemplate-1.2.1\src\lib.rs:
+C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tinytemplate-1.2.1\src\compiler.rs:
+C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tinytemplate-1.2.1\src\error.rs:
+C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tinytemplate-1.2.1\src\instruction.rs:
+C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tinytemplate-1.2.1\src\syntax.rs:
+C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tinytemplate-1.2.1\src\template.rs:

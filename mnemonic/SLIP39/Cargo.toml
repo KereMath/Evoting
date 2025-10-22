@@ -1,0 +1,57 @@
+[package]
+name = "slip39"
+version = "0.1.0"
+edition = "2021"
+authors = ["METU CENG"]
+description = "SLIP-39: Shamir's Secret-Sharing for Mnemonic Codes (native implementation)"
+license = "MIT"
+repository = "https://github.com/metu-ceng/mnemonic"
+keywords = ["slip39", "shamir", "mnemonic", "cryptocurrency", "wallet"]
+categories = ["cryptography", "no-std"]
+
+[dependencies]
+# Cryptography
+sha2 = "0.10"
+hmac = "0.12"
+pbkdf2 = { version = "0.12", default-features = false, features = ["hmac"] }
+
+# Random number generation
+rand = "0.8"
+getrandom = "0.2"
+
+# Encoding
+hex = "0.4"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Memory safety
+zeroize = { version = "1.7", features = ["derive"] }
+
+# Error handling
+thiserror = "1.0"
+
+# Lazy static initialization
+once_cell = "1.19"
+
+[lib]
+name = "slip39"
+path = "src/lib.rs"
+
+[[example]]
+name = "basic_demo"
+path = "examples/basic_demo.rs"
+
+[[example]]
+name = "group_shares"
+path = "examples/group_shares.rs"
+
+[[example]]
+name = "debug_vector"
+path = "examples/debug_vector.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
