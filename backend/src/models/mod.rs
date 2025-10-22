@@ -38,7 +38,9 @@ pub struct Voter {
     pub id: Uuid,
     pub election_id: Uuid,
     pub voter_id: String,
-    pub did: Option<String>,
+    // pub did: Option<String>,  ← REMOVED! DID NEVER stored on server
+    pub did_generated: bool,  // Only flag: has voter completed DID generation?
+    pub prepare_blindsign_done: bool,  // Has voter completed PrepareBlindSign?
     pub status: String,
     pub docker_port: Option<i32>,
     pub container_id: Option<String>,

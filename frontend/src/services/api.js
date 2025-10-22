@@ -35,6 +35,9 @@ export const createElection = (data) =>
 export const deleteElection = (id) =>
   api.delete(`/api/elections/${id}`);
 
+export const advanceToDIDPhase = (id) =>
+  api.post(`/api/elections/${id}/advance-to-did`);
+
 // Voters
 export const getVoters = (electionId = null) =>
   api.get('/api/voters', { params: electionId ? { election_id: electionId } : {} });

@@ -115,3 +115,34 @@ pub async fn delete_election(
 
     Ok(StatusCode::NO_CONTENT)
 }
+
+pub async fn advance_to_did_phase(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, StatusCode> {
+    // Check if election exists and is in phase 6
+    let election: crate::models::Election = sqlx::query_as(
+        "SELECT * FROM elections WHERE id = $1"
+    )
+    .bind(&id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    .ok_or(StatusCode::NOT_FOUND)?;
+
+    if election.phase != 6 {
+        tracing::warn!("Cannot advance to DID phase: election {} is in phase {}, expected 6", id, election.phase);
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    // Advance to phase 7
+    sqlx::query("UPDATE elections SET phase = 7 WHERE id = $1")
+        .bind(&id)
+        .execute(&state.db)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    tracing::info!("✅ Election {} advanced to phase 7 (DID Generation)", id);
+
+    Ok(StatusCode::OK)
+}

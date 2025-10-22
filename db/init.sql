@@ -20,8 +20,8 @@ CREATE TABLE IF NOT EXISTS elections (
     ended_at TIMESTAMP WITH TIME ZONE,
 
     CONSTRAINT valid_threshold CHECK (threshold > 0 AND threshold <= total_trustees),
-    CONSTRAINT valid_status CHECK (status IN ('setup', 'key_generation', 'active', 'voting', 'tallying', 'completed', 'cancelled')),
-    CONSTRAINT valid_phase CHECK (phase >= 1 AND phase <= 8)
+    CONSTRAINT valid_status CHECK (status IN ('setup', 'key_generation', 'active', 'voting', 'tallying', 'completed', 'cancelled', 'credential_issuance')),
+    CONSTRAINT valid_phase CHECK (phase >= 1 AND phase <= 10)
 );
 
 -- Trustees (Election Authorities) table
@@ -47,8 +47,10 @@ CREATE TABLE IF NOT EXISTS voters (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     election_id UUID NOT NULL REFERENCES elections(id) ON DELETE CASCADE,
     voter_id VARCHAR(255) NOT NULL,
-    did TEXT,
-    credential TEXT,
+    -- did TEXT,  ← REMOVED! DID never stored on server
+    did_generated BOOLEAN DEFAULT FALSE,  -- Only flag: has voter completed DID generation?
+    prepare_blindsign_done BOOLEAN DEFAULT FALSE,  -- Has voter completed PrepareBlindSign?
+    credential TEXT,  -- Blind signature credential (after unblinding)
     status VARCHAR(50) NOT NULL DEFAULT 'registered',
     docker_port INTEGER,
     container_id VARCHAR(255),

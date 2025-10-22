@@ -424,3 +424,27 @@ body {
 .gap-20 {
   gap: 20px;
 }
+
+/* Status Indicators */
+.status-indicator-green {
+  background: #28a745;
+  box-shadow: 0 0 5px #28a745;
+}
+
+.status-indicator-red {
+  background: #dc3545;
+  box-shadow: 0 0 5px #dc3545;
+}
+
+/* Blinking Animation */
+@keyframes blink {
+  0%, 49% {
+    opacity: 1;
+  }
+  50%, 99% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 1;
+  }
+}

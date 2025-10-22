@@ -68,13 +68,28 @@ class ContainerUIHandler(BaseHTTPRequestHandler):
             self.serve_storage_data()
         elif parsed_path.path == '/health':
             self.serve_health()
+        elif parsed_path.path.startswith('/wasm/'):
+            self.serve_static_file(parsed_path.path)
         else:
             self.send_error(404, "Not Found")
+
+    def do_OPTIONS(self):
+        """Handle CORS preflight requests"""
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
 
     def serve_ui(self):
         """Serve the main UI HTML"""
         try:
-            template_path = os.path.join(os.path.dirname(__file__), 'template.html')
+            # Use voter-specific template for voters, default template for trustees
+            if CONTAINER_TYPE == 'Voter':
+                template_path = os.path.join(os.path.dirname(__file__), 'template_voter.html')
+            else:
+                template_path = os.path.join(os.path.dirname(__file__), 'template.html')
+
             with open(template_path, 'r', encoding='utf-8') as f:
                 html = f.read()
 
@@ -83,6 +98,9 @@ class ContainerUIHandler(BaseHTTPRequestHandler):
             html = html.replace('{{API_PORT}}', API_PORT)
             html = html.replace('{{UI_PORT}}', str(UI_PORT))
             html = html.replace('{{CONTAINER_ID}}', CONTAINER_ID[:12])
+            html = html.replace('{{ELECTION_ID}}', ELECTION_ID)
+            html = html.replace('{{VOTER_ID}}', os.getenv('VOTER_ID', ''))
+            html = html.replace('{{TC_ID}}', os.getenv('TC_ID', ''))
 
             self.send_response(200)
             self.send_header('Content-Type', 'text/html; charset=utf-8')
@@ -189,6 +207,45 @@ class ContainerUIHandler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         self.wfile.write(json.dumps(health).encode('utf-8'))
+
+    def serve_static_file(self, path):
+        """Serve static files (WASM, JS, etc.)"""
+        try:
+            # Remove leading slash and get file path
+            file_path = path.lstrip('/')
+            full_path = os.path.join(os.path.dirname(__file__), file_path)
+
+            if not os.path.exists(full_path):
+                print(f"❌ File not found: {full_path}")
+                self.send_error(404, "File not found")
+                return
+
+            # Determine content type
+            content_type = 'application/octet-stream'
+            if path.endswith('.js'):
+                content_type = 'application/javascript; charset=utf-8'
+            elif path.endswith('.wasm'):
+                content_type = 'application/wasm'
+            elif path.endswith('.d.ts'):
+                content_type = 'text/plain; charset=utf-8'
+
+            # Read and serve file
+            with open(full_path, 'rb') as f:
+                content = f.read()
+
+            self.send_response(200)
+            self.send_header('Content-Type', content_type)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+            self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+            self.send_header('Cache-Control', 'public, max-age=3600')
+            self.send_header('Content-Length', len(content))
+            self.end_headers()
+            self.wfile.write(content)
+            print(f"✅ Served file: {file_path} ({len(content)} bytes, {content_type})")
+        except Exception as e:
+            print(f"❌ Error serving file {path}: {str(e)}")
+            self.send_error(500, f"Error serving file: {str(e)}")
 
     def get_sample_data(self):
         """Get sample data based on container type"""

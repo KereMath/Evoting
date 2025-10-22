@@ -236,3 +236,230 @@ pub async fn upload_voters_csv(
         },
     }))
 }
+
+#[derive(Deserialize)]
+pub struct DIDCompleteRequest {
+    pub tc_id: String,
+}
+
+#[derive(Serialize)]
+pub struct DIDCompleteResponse {
+    pub success: bool,
+    pub message: String,
+    pub all_completed: bool,
+}
+
+/// Mark DID generation as complete for a voter
+pub async fn mark_did_complete(
+    State(state): State<Arc<AppState>>,
+    Path(voter_id): Path<Uuid>,
+    Json(payload): Json<DIDCompleteRequest>,
+) -> Result<Json<DIDCompleteResponse>, StatusCode> {
+    tracing::info!("Marking DID complete for voter {} (TC: {})", voter_id, payload.tc_id);
+
+    // Get voter
+    let voter = sqlx::query_as::<_, Voter>(
+        "SELECT * FROM voters WHERE id = $1"
+    )
+    .bind(&voter_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| {
+        tracing::error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?
+    .ok_or(StatusCode::NOT_FOUND)?;
+
+    // Verify TC ID matches
+    if voter.voter_id != payload.tc_id {
+        tracing::warn!("TC ID mismatch for voter {}: expected {}, got {}", voter_id, voter.voter_id, payload.tc_id);
+        return Ok(Json(DIDCompleteResponse {
+            success: false,
+            message: "TC ID does not match".to_string(),
+            all_completed: false,
+        }));
+    }
+
+    // Check if already completed
+    if voter.did_generated {
+        return Ok(Json(DIDCompleteResponse {
+            success: true,
+            message: "DID already generated".to_string(),
+            all_completed: false,
+        }));
+    }
+
+    // Mark as complete
+    sqlx::query(
+        "UPDATE voters SET did_generated = TRUE WHERE id = $1"
+    )
+    .bind(&voter_id)
+    .execute(&state.db)
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to update voter: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    tracing::info!("✅ DID marked complete for TC: {}", payload.tc_id);
+
+    // Check if all voters in this election have completed DID generation
+    let total_voters: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM voters WHERE election_id = $1"
+    )
+    .bind(&voter.election_id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let completed_voters: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM voters WHERE election_id = $1 AND did_generated = TRUE"
+    )
+    .bind(&voter.election_id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let all_completed = completed_voters >= total_voters;
+
+    if all_completed {
+        tracing::info!("🎉 All voters completed DID generation for election {}", voter.election_id);
+
+        // Update election phase to 8 (from 7 to 8 after DID generation)
+        sqlx::query(
+            "UPDATE elections SET phase = 8 WHERE id = $1 AND phase = 7"
+        )
+        .bind(&voter.election_id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to update election phase: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+        tracing::info!("✅ Election {} advanced to phase 8 (DID generation complete)", voter.election_id);
+    } else {
+        tracing::info!("DID generation progress: {}/{} voters completed", completed_voters, total_voters);
+    }
+
+    Ok(Json(DIDCompleteResponse {
+        success: true,
+        message: format!("DID generation marked complete ({}/{})", completed_voters, total_voters),
+        all_completed,
+    }))
+}
+
+#[derive(Serialize)]
+pub struct VoterStatusResponse {
+    pub voter_id: Uuid,
+    pub election_id: Uuid,
+    pub did_generated: bool,
+    pub has_voted: bool,
+    pub status: String,
+    pub total_voters: i64,
+    pub completed_voters: i64,
+}
+
+/// Get voter status (for checking DID generation status without localStorage)
+pub async fn get_voter_status(
+    State(state): State<Arc<AppState>>,
+    Path(voter_id): Path<Uuid>,
+) -> Result<Json<VoterStatusResponse>, StatusCode> {
+    // Get voter
+    let voter = sqlx::query_as::<_, Voter>(
+        "SELECT * FROM voters WHERE id = $1"
+    )
+    .bind(&voter_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| {
+        tracing::error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?
+    .ok_or(StatusCode::NOT_FOUND)?;
+
+    // Get total and completed voters count for this election
+    let total_voters: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM voters WHERE election_id = $1"
+    )
+    .bind(&voter.election_id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let completed_voters: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM voters WHERE election_id = $1 AND did_generated = TRUE"
+    )
+    .bind(&voter.election_id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(VoterStatusResponse {
+        voter_id: voter.id,
+        election_id: voter.election_id,
+        did_generated: voter.did_generated,
+        has_voted: voter.voted_at.is_some(),
+        status: voter.status,
+        total_voters,
+        completed_voters,
+    }))
+}
+
+/// Mark voter's PrepareBlindSign as complete
+pub async fn mark_prepare_blindsign_complete(
+    State(state): State<Arc<AppState>>,
+    Path(voter_id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    // Update voter
+    let voter = sqlx::query_as::<_, Voter>(
+        "UPDATE voters SET prepare_blindsign_done = TRUE WHERE id = $1 RETURNING *"
+    )
+    .bind(&voter_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| {
+        tracing::error!("Database error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?
+    .ok_or(StatusCode::NOT_FOUND)?;
+
+    tracing::info!("Voter {} completed PrepareBlindSign", voter_id);
+
+    // Check if all voters have completed PrepareBlindSign
+    let total_voters: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM voters WHERE election_id = $1"
+    )
+    .bind(&voter.election_id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let completed_voters: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM voters WHERE election_id = $1 AND prepare_blindsign_done = TRUE"
+    )
+    .bind(&voter.election_id)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    // If all voters completed, advance election to phase 8
+    if completed_voters >= total_voters && total_voters > 0 {
+        let _ = sqlx::query(
+            "UPDATE elections SET phase = 8, status = 'credential_issuance' WHERE id = $1"
+        )
+        .bind(&voter.election_id)
+        .execute(&state.db)
+        .await;
+
+        tracing::info!("Election {} advanced to phase 8 (PrepareBlindSign complete)", voter.election_id);
+    }
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "PrepareBlindSign marked as complete",
+        "all_completed": completed_voters >= total_voters,
+        "completed": completed_voters,
+        "total": total_voters
+    })))
+}

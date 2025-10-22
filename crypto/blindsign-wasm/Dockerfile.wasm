@@ -1,0 +1,62 @@
+# Dockerfile for building PBC + PrepareBlindSign to WASM
+FROM emscripten/emsdk:3.1.50
+
+WORKDIR /build
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    tar \
+    make \
+    m4 \
+    flex \
+    bison \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download and build GMP
+RUN wget https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz && \
+    tar -xf gmp-6.3.0.tar.xz && \
+    cd gmp-6.3.0 && \
+    emconfigure ./configure --prefix=/build/install --disable-assembly --host=none CFLAGS="-O3" && \
+    emmake make -j$(nproc) && \
+    emmake make install && \
+    cd .. && rm -rf gmp-6.3.0 gmp-6.3.0.tar.xz
+
+# Download and build PBC
+RUN wget https://crypto.stanford.edu/pbc/files/pbc-0.5.14.tar.gz && \
+    tar -xzf pbc-0.5.14.tar.gz && \
+    cd pbc-0.5.14 && \
+    emconfigure ./configure \
+        --prefix=/build/install \
+        --with-gmp=/build/install \
+        CFLAGS="-O3 -I/build/install/include" \
+        CPPFLAGS="-I/build/install/include" \
+        LDFLAGS="-L/build/install/lib" && \
+    emmake make -j$(nproc) libpbc.la || true && \
+    emmake make install-libLTLIBRARIES install-data && \
+    cd .. && rm -rf pbc-0.5.14 pbc-0.5.14.tar.gz
+
+# Copy source files
+COPY blindsign_wasm.c sha512.c sha512.h /build/
+
+# Build WASM module
+RUN emcc blindsign_wasm.c sha512.c \
+    -I/build/install/include \
+    -I/build/install/include/pbc \
+    -L/build/install/lib \
+    -lpbc -lgmp \
+    -s WASM=1 \
+    -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap","UTF8ToString","stringToUTF8","lengthBytesUTF8"]' \
+    -s EXPORTED_FUNCTIONS='["_init_pairing","_prepare_blind_sign","_cleanup_pairing","_malloc","_free"]' \
+    -s ALLOW_MEMORY_GROWTH=1 \
+    -s INITIAL_MEMORY=64MB \
+    -s MAXIMUM_MEMORY=256MB \
+    -s MODULARIZE=1 \
+    -s EXPORT_NAME='createBlindSignModule' \
+    -s ENVIRONMENT='web' \
+    -s ASSERTIONS=1 \
+    -s STACK_SIZE=5MB \
+    -O3 \
+    -o blindsign.js
+
+CMD ["cp", "blindsign.js", "blindsign.wasm", "/output/"]

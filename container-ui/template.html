@@ -230,6 +230,186 @@
             </div>
         </div>
 
+        <div class="card" id="didGenerationCard" style="display: none;">
+            <div class="card-title">🆔 DID Generation (Client-Side)</div>
+            <div id="didGeneration">
+                <div style="padding: 15px; background: #e7f3ff; border: 1px solid #007bff; border-radius: 6px; margin-bottom: 15px;">
+                    <p style="font-size: 13px; color: #495057; margin: 0;">
+                        Generate your Decentralized Identifier (DID) using 12-word BIP39 mnemonic. All computation happens in your browser.
+                    </p>
+                </div>
+
+                <button id="generateNewDID" class="btn" onclick="generateNewDID()" style="width: 100%; margin-bottom: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 600;">
+                    🎲 Generate New DID
+                </button>
+
+                <div id="generatedDIDResult" style="display: none; margin-bottom: 20px;">
+                    <div style="background: #d4edda; border: 1px solid #28a745; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                        <strong style="color: #155724;">✅ DID Generated Successfully!</strong>
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <strong style="font-size: 13px;">🔑 Your Mnemonic (12 words):</strong>
+                            <button class="btn" onclick="copyMnemonic()" style="padding: 4px 10px; font-size: 11px;">📋 Copy</button>
+                        </div>
+                        <div id="mnemonicDisplay" style="padding: 12px; background: #fff3cd; border: 2px solid #ffc107; border-radius: 6px; font-family: monospace; font-size: 12px; word-wrap: break-word;"></div>
+                        <p style="font-size: 11px; color: #856404; margin: 8px 0 0 0;">
+                            ⚠️ Write this down! Not stored anywhere and cannot be recovered if lost.
+                        </p>
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <strong style="font-size: 13px;">🆔 Your DID (SHA-512):</strong>
+                            <button class="btn" onclick="copyDID()" style="padding: 4px 10px; font-size: 11px;">📋 Copy</button>
+                        </div>
+                        <div id="didDisplay" style="padding: 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; font-family: monospace; font-size: 10px; word-break: break-all; color: #495057;"></div>
+                    </div>
+
+                    <div id="markCompleteSection">
+                        <button id="markCompleteBtn" class="btn" onclick="markDIDComplete()" style="width: 100%; padding: 12px; background: #28a745; color: white; font-weight: 600; font-size: 14px;">
+                            ✅ Mark DID Generation Complete
+                        </button>
+                        <p style="font-size: 11px; color: #6c757d; margin: 8px 0 0 0; text-align: center;">
+                            Click this ONLY ONCE after you have safely saved your mnemonic
+                        </p>
+                    </div>
+
+                    <div id="didCompletedMessage" style="display: none; padding: 12px; background: #d1ecf1; border: 1px solid #0c5460; border-radius: 6px; text-align: center;">
+                        <strong style="color: #0c5460;">✅ DID Generation Completed</strong>
+                        <p style="font-size: 12px; color: #0c5460; margin: 5px 0 0 0;">You can no longer generate a new DID</p>
+                    </div>
+                </div>
+
+                <div style="border-top: 1px solid #dee2e6; padding-top: 15px; margin-top: 15px;">
+                    <button class="btn" onclick="toggleRecoverDID()" style="width: 100%; background: #17a2b8; color: white;">
+                        📝 Recover DID from Mnemonic
+                    </button>
+
+                    <div id="recoverDIDSection" style="display: none; margin-top: 15px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 13px;">Enter your 12-word mnemonic:</label>
+                        <textarea id="mnemonicInput" rows="3" placeholder="word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; font-family: monospace; margin-bottom: 10px;"></textarea>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn" onclick="recoverDIDFromMnemonic()" style="flex: 1; background: #28a745; color: white;">🔍 Calculate DID</button>
+                            <button class="btn" onclick="toggleRecoverDID()" style="background: #6c757d; color: white;">Cancel</button>
+                        </div>
+
+                        <div id="recoveredDIDResult" style="display: none; margin-top: 15px;">
+                            <div style="background: #d4edda; border: 1px solid #28a745; padding: 12px; border-radius: 6px; margin-bottom: 10px;">
+                                <strong style="color: #155724;">✅ DID Recovered!</strong>
+                            </div>
+                            <div>
+                                <strong style="font-size: 13px; display: block; margin-bottom: 8px;">🆔 Your DID:</strong>
+                                <div id="recoveredDIDDisplay" style="padding: 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; font-family: monospace; font-size: 10px; word-break: break-all; color: #495057;"></div>
+                            </div>
+                        </div>
+
+                        <div id="recoverError" style="display: none; margin-top: 10px; padding: 10px; background: #f8d7da; border: 1px solid #dc3545; border-radius: 6px; color: #721c24; font-size: 12px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- WASM Status Indicator -->
+        <div class="card" id="wasmStatusCard" style="display: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <div class="card-title" style="border-bottom: 2px solid rgba(255,255,255,0.3); color: white;">
+                🔧 WebAssembly Status (Client-Side Computing)
+            </div>
+            <div style="padding: 10px 0;">
+                <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                    <span style="font-size: 24px; margin-right: 10px;">✅</span>
+                    <div>
+                        <strong>DID WASM Module</strong><br>
+                        <small id="didWasmStatus">Loading...</small>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                    <span style="font-size: 24px; margin-right: 10px;">✅</span>
+                    <div>
+                        <strong>PBC Crypto WASM Module</strong><br>
+                        <small id="pbcWasmStatus">Loading...</small>
+                    </div>
+                </div>
+                <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 6px; margin-top: 10px;">
+                    <strong>🔐 Privacy Guarantee:</strong><br>
+                    <small style="opacity: 0.9;">All cryptographic operations (DID generation, o-value, blind signatures) execute entirely in your browser. No sensitive data is ever sent to the server.</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 8: Credential Issuance (Blind Signature) -->
+        <div class="card" id="credentialCard" style="display: none;">
+            <div class="card-title">🔐 Credential Issuance (Blind Signature)</div>
+
+            <!-- Step 1: Generate o-value -->
+            <div id="oValueSection">
+                <div style="padding: 15px; background: #e7f3ff; border: 1px solid #007bff; border-radius: 6px; margin-bottom: 15px;">
+                    <p style="font-size: 13px; color: #495057; margin: 0;">
+                        <strong>Step 1:</strong> Generate o-value (blinding factor) using 12-word mnemonic.
+                    </p>
+                </div>
+
+                <button id="generateOValue" class="btn" onclick="generateOValue()" style="width: 100%; margin-bottom: 15px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; font-weight: 600;">
+                    🎲 Generate o-value
+                </button>
+
+                <div id="oValueResult" style="display: none; margin-bottom: 20px;">
+                    <div style="background: #d4edda; border: 1px solid #28a745; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                        <strong style="color: #155724;">✅ o-value Generated!</strong>
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <strong style="font-size: 13px;">🔑 o-value Mnemonic (12 words):</strong>
+                            <button class="btn" onclick="copyOValueMnemonic()" style="padding: 4px 10px; font-size: 11px;">📋 Copy</button>
+                        </div>
+                        <div id="oValueMnemonicDisplay" style="padding: 12px; background: #fff3cd; border: 2px solid #ffc107; border-radius: 6px; font-family: monospace; font-size: 12px; word-wrap: break-word;"></div>
+                        <p style="font-size: 11px; color: #856404; margin: 8px 0 0 0;">
+                            ⚠️ Save this! You'll need it later for unblinding.
+                        </p>
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <strong style="font-size: 13px;">🔢 o-value (SHA-512):</strong>
+                        <div id="oValueDisplay" style="padding: 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; font-family: monospace; font-size: 10px; word-break: break-all; color: #495057; margin-top: 8px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Prepare Blind Sign -->
+            <div id="prepareBlindSignSection" style="display: none; border-top: 1px solid #dee2e6; padding-top: 20px; margin-top: 20px;">
+                <div style="padding: 15px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; margin-bottom: 15px;">
+                    <p style="font-size: 13px; color: #495057; margin: 0;">
+                        <strong>Step 2:</strong> Prepare blind signature request. Enter your DID and o-value mnemonics.
+                    </p>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 13px;">🆔 DID Mnemonic:</label>
+                    <textarea id="didMnemonicInput" placeholder="word1 word2 word3 ... word12" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; font-size: 12px; resize: vertical; min-height: 60px;"></textarea>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 13px;">🔢 o-value Mnemonic:</label>
+                    <textarea id="oValueMnemonicInput" placeholder="word1 word2 word3 ... word12" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; font-size: 12px; resize: vertical; min-height: 60px;"></textarea>
+                </div>
+
+                <button id="prepareBlindSignBtn" class="btn" onclick="prepareBlindSign()" style="width: 100%; padding: 12px; background: #28a745; color: white; font-weight: 600; font-size: 14px;">
+                    ✨ Prepare Blind Signature Request
+                </button>
+
+                <div id="prepareBlindSignResult" style="display: none; margin-top: 20px;">
+                    <div style="background: #d4edda; border: 1px solid #28a745; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                        <strong style="color: #155724;">✅ Blind Sign Request Prepared!</strong>
+                        <p style="font-size: 12px; color: #155724; margin: 5px 0 0 0;">Request sent to trustees...</p>
+                    </div>
+                </div>
+
+                <div id="prepareBlindSignError" style="display: none; margin-top: 15px; padding: 12px; background: #f8d7da; border: 1px solid #dc3545; border-radius: 6px; color: #721c24; font-size: 12px;"></div>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-title">💾 Container Data</div>
             <div id="storageData">
@@ -239,12 +419,528 @@
         </div>
     </div>
 
+    <!-- Load Emscripten WASM (UMD format) before ES6 modules -->
+    <script src="./wasm/blindsign.js"></script>
+
+    <script type="module">
+        // Load WASM modules for DID generation and PrepareBlindSign (only for Voter containers)
+        let wasmModule = null;
+        let blindSignModule = null;
+        let cryptoParams = null;
+        const CONTAINER_TYPE_CHECK = '{{CONTAINER_TYPE}}';
+        const UI_PORT = '{{UI_PORT}}';  // Define UI_PORT in module scope
+
+        if (CONTAINER_TYPE_CHECK === 'Voter') {
+            console.log('🚀 Loading WASM modules for client-side cryptography...');
+            console.log('📍 All cryptographic operations will run in YOUR BROWSER');
+
+            try {
+                // Load DID WASM module
+                console.log('⏳ Loading DID WASM module...');
+                const wasmStartTime = performance.now();
+                const wasm = await import('./wasm/did_wasm.js');
+                await wasm.default();
+                const wasmEndTime = performance.now();
+                wasmModule = wasm;
+                console.log(`✅ WASM DID module loaded in ${(wasmEndTime - wasmStartTime).toFixed(2)}ms`);
+                console.log('   📦 Module size: ~309 KB');
+                console.log('   🔧 Functions available: generate_did, recover_did, generate_o_value');
+
+                // Update UI
+                document.getElementById('wasmStatusCard').style.display = 'block';
+                document.getElementById('didWasmStatus').textContent = `Loaded (~309 KB, ${(wasmEndTime - wasmStartTime).toFixed(0)}ms)`;
+
+                // Load PBC BlindSign WASM module
+                // createBlindSignModule is now available globally from the script tag above
+                console.log('⏳ Loading PBC BlindSign WASM module...');
+                const pbcStartTime = performance.now();
+                blindSignModule = await createBlindSignModule();
+                const pbcEndTime = performance.now();
+                console.log(`✅ WASM BlindSign module loaded in ${(pbcEndTime - pbcStartTime).toFixed(2)}ms`);
+                console.log('   📦 Module size: ~397 KB');
+                console.log('   🔧 PBC library compiled to WebAssembly');
+                console.log('   🔐 Pairing-based cryptography ready!');
+
+                // Update UI
+                document.getElementById('pbcWasmStatus').textContent = `Loaded (~397 KB, ${(pbcEndTime - pbcStartTime).toFixed(0)}ms)`;
+
+                // Fetch crypto parameters from backend (via /storage endpoint)
+                // Storage endpoint is on the UI port (same server serving this page)
+                const response = await fetch(`http://localhost:${UI_PORT}/storage`);
+                const data = await response.json();
+
+                if (data.crypto_parameters && data.crypto_parameters_loaded) {
+                    cryptoParams = data.crypto_parameters;
+                    console.log('✅ Crypto parameters loaded:', cryptoParams);
+
+                    // Initialize PBC pairing with real parameters
+                    const result = blindSignModule.ccall(
+                        'init_pairing',
+                        'number',
+                        ['string', 'string', 'string', 'string', 'string'],
+                        [
+                            cryptoParams.pairing_params,
+                            cryptoParams.prime_order,
+                            cryptoParams.g1,
+                            cryptoParams.g2,
+                            cryptoParams.h1
+                        ]
+                    );
+
+                    if (result === 0) {
+                        console.log('✅ PBC pairing initialized with backend parameters');
+                    } else {
+                        console.error('❌ Failed to initialize PBC pairing');
+                    }
+                } else {
+                    console.warn('⚠️ Crypto parameters not available yet');
+                }
+
+                document.getElementById('didGenerationCard').style.display = 'block';
+                document.getElementById('credentialCard').style.display = 'block';
+            } catch (err) {
+                console.error('Failed to load WASM modules:', err);
+            }
+        }
+
+        // Expose modules globally
+        window.wasmModule = wasmModule;
+        window.blindSignModule = blindSignModule;
+        window.cryptoParams = cryptoParams;
+    </script>
+
     <script>
         // Configuration - will be replaced by container-specific values
         const CONTAINER_TYPE = '{{CONTAINER_TYPE}}';
         const API_PORT = '{{API_PORT}}';
         const UI_PORT = '{{UI_PORT}}';
         const CONTAINER_ID = '{{CONTAINER_ID}}';
+        const ELECTION_ID = '{{ELECTION_ID}}';
+        const VOTER_ID = '{{VOTER_ID}}';
+        const TC_ID = '{{TC_ID}}';
+
+        // DID Generation state
+        let currentMnemonic = '';
+        let currentDID = '';
+        let voterStatus = null; // Will be fetched from backend API
+
+        // Fetch voter status from backend API
+        async function fetchVoterStatus() {
+            if (!VOTER_ID || VOTER_ID === '') {
+                console.warn('⚠️ VOTER_ID not set, cannot fetch status');
+                return null;
+            }
+
+            try {
+                const response = await fetch(`http://host.docker.internal:8080/api/voters/${VOTER_ID}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                voterStatus = await response.json();
+                console.log('✅ Voter status fetched from backend:', voterStatus);
+                return voterStatus;
+            } catch (error) {
+                console.error('❌ Failed to fetch voter status:', error);
+                return null;
+            }
+        }
+
+        // DID Generation Functions
+        function generateNewDID() {
+            if (!window.wasmModule) {
+                alert('WASM module not loaded');
+                return;
+            }
+
+            try {
+                console.log('🔵 Starting DID generation (CLIENT-SIDE WASM)...');
+                console.log('📍 Execution location: Browser (WebAssembly)');
+                console.log('🔐 No server communication - everything happens in your browser!');
+
+                const startTime = performance.now();
+                const result = window.wasmModule.generate_did();
+                const endTime = performance.now();
+
+                console.log(`✅ DID generated in ${(endTime - startTime).toFixed(2)}ms (Pure WASM)`);
+                console.log('📊 Generated DID length:', result.did.length, 'chars');
+                console.log('📊 Mnemonic words:', result.mnemonic.split(' ').length);
+                console.log('🔒 This computation happened entirely in your browser - no backend involved!');
+
+                currentMnemonic = result.mnemonic;
+                currentDID = result.did;
+
+                document.getElementById('mnemonicDisplay').textContent = result.mnemonic;
+                document.getElementById('didDisplay').textContent = result.did;
+                document.getElementById('generatedDIDResult').style.display = 'block';
+                document.getElementById('recoverDIDSection').style.display = 'none';
+                document.getElementById('recoveredDIDResult').style.display = 'none';
+
+                // Show success message with timing
+                alert(`✅ DID Generated!\n\n⏱️ Computation time: ${(endTime - startTime).toFixed(2)}ms\n🔐 Generated entirely in your browser using WebAssembly\n📝 Check console (F12) for details`);
+            } catch (err) {
+                alert('Failed to generate DID: ' + err.message);
+                console.error('❌ WASM Error:', err);
+            }
+        }
+
+        function toggleRecoverDID() {
+            const section = document.getElementById('recoverDIDSection');
+            const isVisible = section.style.display !== 'none';
+            section.style.display = isVisible ? 'none' : 'block';
+
+            if (!isVisible) {
+                document.getElementById('mnemonicInput').value = '';
+                document.getElementById('recoveredDIDResult').style.display = 'none';
+                document.getElementById('recoverError').style.display = 'none';
+                document.getElementById('generatedDIDResult').style.display = 'none';
+            }
+        }
+
+        function recoverDIDFromMnemonic() {
+            if (!window.wasmModule) {
+                alert('WASM module not loaded');
+                return;
+            }
+
+            const mnemonic = document.getElementById('mnemonicInput').value.trim();
+            if (!mnemonic) {
+                showRecoverError('Please enter a mnemonic phrase');
+                return;
+            }
+
+            try {
+                const result = window.wasmModule.recover_did(mnemonic);
+
+                if (!result.valid) {
+                    showRecoverError('Invalid mnemonic phrase. Please check your 12-word mnemonic.');
+                    document.getElementById('recoveredDIDResult').style.display = 'none';
+                    return;
+                }
+
+                document.getElementById('recoveredDIDDisplay').textContent = result.did;
+                document.getElementById('recoveredDIDResult').style.display = 'block';
+                document.getElementById('recoverError').style.display = 'none';
+            } catch (err) {
+                showRecoverError('Failed to recover DID: ' + err.message);
+                console.error(err);
+            }
+        }
+
+        function showRecoverError(message) {
+            const errorDiv = document.getElementById('recoverError');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function copyMnemonic() {
+            navigator.clipboard.writeText(currentMnemonic)
+                .then(() => alert('Mnemonic copied to clipboard!'))
+                .catch(err => console.error('Failed to copy:', err));
+        }
+
+        function copyDID() {
+            navigator.clipboard.writeText(currentDID)
+                .then(() => alert('DID copied to clipboard!'))
+                .catch(err => console.error('Failed to copy:', err));
+        }
+
+        // o-value generation functions
+        let currentOValueMnemonic = '';
+        let currentOValue = '';
+
+        function generateOValue() {
+            if (!window.wasmModule) {
+                alert('WASM module not loaded. Please refresh the page.');
+                return;
+            }
+
+            const button = document.getElementById('generateOValue');
+            button.disabled = true;
+            button.textContent = 'Generating o-value...';
+
+            try {
+                console.log('🔵 Starting o-value generation (CLIENT-SIDE WASM)...');
+                console.log('📍 Execution location: Browser (WebAssembly)');
+
+                const startTime = performance.now();
+                const result = window.wasmModule.generate_o_value();
+                const endTime = performance.now();
+
+                console.log(`✅ o-value generated in ${(endTime - startTime).toFixed(2)}ms (Pure WASM)`);
+                console.log('🔒 Blinding factor generated locally - zero server knowledge!');
+
+                currentOValueMnemonic = result.mnemonic;
+                currentOValue = result.did; // The 'did' field holds o_value
+
+                // Display mnemonic
+                const mnemonicDisplay = document.getElementById('oValueMnemonicDisplay');
+                mnemonicDisplay.innerHTML = `
+                    <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin-top: 15px;">
+                        <strong style="color: #856404; display: block; margin-bottom: 10px;">🔑 o-value Mnemonic (SAVE THIS!):</strong>
+                        <div style="font-family: monospace; font-size: 14px; background: white; padding: 12px; border-radius: 4px; word-break: break-word; color: #333;">
+                            ${result.mnemonic}
+                        </div>
+                        <button onclick="copyOValueMnemonic()" style="margin-top: 10px; background: #ffc107; color: #333; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600;">
+                            📋 Copy Mnemonic
+                        </button>
+                    </div>
+                `;
+
+                // Display o-value
+                const oValueDisplay = document.getElementById('oValueDisplay');
+                oValueDisplay.innerHTML = `
+                    <div style="background: #d1ecf1; border: 2px solid #17a2b8; border-radius: 8px; padding: 15px; margin-top: 10px;">
+                        <strong style="color: #0c5460; display: block; margin-bottom: 10px;">🔐 o-value (SHA-512 hash):</strong>
+                        <div style="font-family: monospace; font-size: 11px; background: white; padding: 12px; border-radius: 4px; word-break: break-all; color: #333;">
+                            ${result.did}
+                        </div>
+                    </div>
+                `;
+
+                // Show results
+                document.getElementById('oValueResult').style.display = 'block';
+
+                // Show PrepareBlindSign section
+                document.getElementById('prepareBlindSignSection').style.display = 'block';
+
+                // Store in memory (no localStorage - user should save their mnemonic)
+                // Session-only storage, will be lost on page refresh
+                console.log('💾 o-value stored in memory (session only)');
+
+                // Update button
+                button.textContent = '✅ o-value Generated';
+                button.disabled = false;
+
+            } catch (error) {
+                console.error('Error generating o-value:', error);
+                alert('Failed to generate o-value: ' + error.message);
+                button.disabled = false;
+                button.textContent = '🎲 Generate o-value';
+            }
+        }
+
+        function copyOValueMnemonic() {
+            navigator.clipboard.writeText(currentOValueMnemonic)
+                .then(() => alert('o-value mnemonic copied to clipboard!'))
+                .catch(err => console.error('Failed to copy:', err));
+        }
+
+        async function prepareBlindSign() {
+            if (!window.wasmModule || !window.blindSignModule) {
+                alert('WASM modules not loaded. Please refresh the page.');
+                return;
+            }
+
+            if (!window.cryptoParams) {
+                alert('Crypto parameters not loaded. Please wait for setup phase to complete.');
+                return;
+            }
+
+            // Get input values
+            const didMnemonic = document.getElementById('didMnemonicInput').value.trim();
+            const oValueMnemonic = document.getElementById('oValueMnemonicInput').value.trim();
+
+            if (!didMnemonic || !oValueMnemonic) {
+                alert('Please enter both DID mnemonic and o-value mnemonic');
+                return;
+            }
+
+            const button = document.getElementById('prepareBlindSignBtn');
+            button.disabled = true;
+            button.textContent = '⏳ Preparing blind signature request...';
+
+            try {
+                // Recover DID from mnemonic
+                const didResult = window.wasmModule.recover_did(didMnemonic);
+                if (!didResult.valid) {
+                    alert('Invalid DID mnemonic. Please check your 12-word mnemonic.');
+                    button.disabled = false;
+                    button.textContent = '✨ Prepare Blind Signature Request';
+                    return;
+                }
+
+                // Recover o-value from mnemonic
+                const oValueResult = window.wasmModule.recover_o_value(oValueMnemonic);
+                if (!oValueResult.valid) {
+                    alert('Invalid o-value mnemonic. Please check your 12-word mnemonic.');
+                    button.disabled = false;
+                    button.textContent = '✨ Prepare Blind Signature Request';
+                    return;
+                }
+
+                // Call PBC PrepareBlindSign WASM function (Algorithm 4 with REAL PBC params)
+                console.log('🔵 Starting PrepareBlindSign (CLIENT-SIDE WASM with PBC)...');
+                console.log('📍 Execution location: Browser (WebAssembly + PBC Crypto)');
+                console.log('🔐 Input DID:', didResult.did.substring(0, 32) + '...');
+                console.log('🔐 Input o-value:', oValueResult.did.substring(0, 32) + '...');
+                console.log('⚡ Using pairing-based cryptography (PBC library compiled to WASM)');
+
+                const startTime = performance.now();
+
+                // Call C function via Emscripten ccall
+                const resultPtr = window.blindSignModule.ccall(
+                    'prepare_blind_sign',
+                    'string',
+                    ['string', 'string'],
+                    [didResult.did, oValueResult.did]
+                );
+
+                const endTime = performance.now();
+
+                // Parse JSON result
+                const blindSignResult = JSON.parse(resultPtr);
+
+                console.log(`✅ PrepareBlindSign completed in ${(endTime - startTime).toFixed(2)}ms (Pure WASM + PBC)`);
+                console.log('🔒 Zero-knowledge proof generated locally!');
+                console.log('📊 Commitment:', blindSignResult.com.substring(0, 32) + '...');
+                console.log('📊 Proof components:', Object.keys(blindSignResult.proof).join(', '));
+
+                // Display result
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'success';
+                resultDiv.style.marginTop = '15px';
+                resultDiv.innerHTML = `
+                    <strong>✅ Blind Signature Request Prepared!</strong><br><br>
+                    <div style="text-align: left; font-size: 11px;">
+                        <strong>Commitment (com):</strong><br>
+                        <code style="word-break: break-all; font-size: 9px;">${blindSignResult.com}</code><br><br>
+
+                        <strong>Initial Commitment (com_i):</strong><br>
+                        <code style="word-break: break-all; font-size: 9px;">${blindSignResult.com_i}</code><br><br>
+
+                        <strong>Hash Point (h):</strong><br>
+                        <code style="word-break: break-all; font-size: 9px;">${blindSignResult.h}</code><br><br>
+
+                        <strong>Zero-Knowledge Proof (KoR):</strong><br>
+                        <div style="margin-left: 10px; font-size: 9px;">
+                            <strong>c:</strong> <code style="word-break: break-all;">${blindSignResult.proof.c}</code><br>
+                            <strong>s1:</strong> <code style="word-break: break-all;">${blindSignResult.proof.s1}</code><br>
+                            <strong>s2:</strong> <code style="word-break: break-all;">${blindSignResult.proof.s2}</code><br>
+                            <strong>s3:</strong> <code style="word-break: break-all;">${blindSignResult.proof.s3}</code><br>
+                        </div><br>
+
+                        <strong>Status:</strong> ✅ Cryptographic proof generated successfully!<br>
+                        <em style="color: #28a745;">Ready to request blind signatures from trustees</em>
+                    </div>
+                `;
+
+                document.getElementById('prepareBlindSignSection').appendChild(resultDiv);
+
+                // Store in memory (no localStorage - sensitive cryptographic data should not persist)
+                // Session-only storage, will be lost on page refresh
+                console.log('💾 Blind signature request stored in memory (session only)');
+
+                button.textContent = '✅ Request Prepared';
+                button.disabled = true;
+
+                console.log('✅ PrepareBlindSign completed:', blindSignResult);
+                alert('İş bitti! 🎉\n\nCryptographic blind signature request prepared successfully!\n\nNext step: Request blind signatures from trustees.');
+
+            } catch (error) {
+                console.error('Error preparing blind sign:', error);
+                alert('Failed to prepare blind signature request: ' + error.message);
+                button.disabled = false;
+                button.textContent = '✨ Prepare Blind Signature Request';
+            }
+        }
+
+        async function markDIDComplete() {
+            if (!VOTER_ID || !TC_ID) {
+                alert('Error: Voter ID or TC ID not available');
+                return;
+            }
+
+            if (!currentDID) {
+                alert('Please generate a DID first');
+                return;
+            }
+
+            const button = document.getElementById('markCompleteBtn');
+            button.disabled = true;
+            button.textContent = '⏳ Marking complete...';
+
+            try {
+                const response = await fetch(`http://host.docker.internal:8080/api/voters/${VOTER_ID}/did-complete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tc_id: TC_ID })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Hide the mark complete section
+                    document.getElementById('markCompleteSection').style.display = 'none';
+
+                    // Show success message
+                    const successDiv = document.createElement('div');
+                    successDiv.className = 'success';
+                    successDiv.innerHTML = `
+                        ✅ DID Generation Completed!<br>
+                        <small>Progress: ${result.completed_count}/${result.total_voters} voters completed</small>
+                    `;
+                    document.getElementById('generatedDIDResult').appendChild(successDiv);
+
+                    // Disable generate button
+                    document.getElementById('generateNewDID').disabled = true;
+
+                    alert(`DID generation marked as complete!\n${result.completed_count}/${result.total_voters} voters have completed DID generation.`);
+                } else {
+                    throw new Error(result.message || 'Failed to mark DID complete');
+                }
+            } catch (error) {
+                console.error('Error marking DID complete:', error);
+                alert(`Error: ${error.message}`);
+                button.disabled = false;
+                button.textContent = '✅ Mark DID Generation Complete';
+            }
+        }
+
+        // Check if DID generation was already completed (fetch from backend, NOT localStorage)
+        async function checkDIDCompletionStatus() {
+            if (CONTAINER_TYPE !== 'Voter') {
+                return;
+            }
+
+            const status = await fetchVoterStatus();
+            if (!status) {
+                console.warn('⚠️ Could not fetch voter status, DID button will remain enabled');
+                return;
+            }
+
+            if (status.did_generated) {
+                console.log('🔒 DID already generated for this voter, disabling button');
+
+                // Disable generation
+                const generateBtn = document.getElementById('generateNewDID');
+                if (generateBtn) {
+                    generateBtn.disabled = true;
+                    generateBtn.style.opacity = '0.5';
+                    generateBtn.style.cursor = 'not-allowed';
+                }
+
+                // Hide mark complete section
+                const markCompleteSection = document.getElementById('markCompleteSection');
+                if (markCompleteSection) {
+                    markCompleteSection.style.display = 'none';
+                }
+
+                // Show completed message if DID result is visible
+                const didResult = document.getElementById('generatedDIDResult');
+                if (didResult && didResult.style.display !== 'none') {
+                    const completedMsg = document.getElementById('didCompletedMessage');
+                    if (completedMsg) {
+                        completedMsg.style.display = 'block';
+                    }
+                }
+            } else {
+                console.log('✅ DID not yet generated, button is enabled');
+            }
+        }
 
         // Initialize page
         async function initPage() {
@@ -256,6 +952,7 @@
             document.getElementById('uiPort').textContent = UI_PORT;
 
             await loadStorageData();
+            checkDIDCompletionStatus();
         }
 
         async function loadStorageData() {

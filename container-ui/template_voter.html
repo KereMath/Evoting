@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voter Interface - E-Voting</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .mnemonic-box {
+            padding: 15px;
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            word-wrap: break-word;
+            margin: 10px 0;
+        }
+
+        .copy-btn {
+            padding: 6px 12px;
+            font-size: 12px;
+            background: #17a2b8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .copy-btn:hover {
+            background: #138496;
+        }
+
+        .info-box {
+            padding: 15px;
+            background: #e7f3ff;
+            border: 1px solid #007bff;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            color: #495057;
+        }
+
+        .success-box {
+            padding: 15px;
+            background: #d4edda;
+            border: 1px solid #28a745;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .warning-box {
+            padding: 10px;
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 12px;
+            color: #856404;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .output-section {
+            margin-top: 15px;
+            padding: 12px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+        }
+
+        .output-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        .output-value {
+            padding: 8px;
+            background: white;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            word-break: break-all;
+            color: #212529;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗳️ Voter Interface</h1>
+            <p class="subtitle">Secure Blind Signature Credential System</p>
+        </div>
+
+        <!-- Main Action Card -->
+        <div class="card">
+            <div class="card-title">🔐 Credential Generation</div>
+
+            <div class="info-box">
+                <strong>What happens when you click "Prepare BlindSign"?</strong><br><br>
+                <strong>1. Generate DID:</strong> Your secret identity (12-word mnemonic)<br>
+                <strong>2. Generate o-value:</strong> Your blinding factor (12-word mnemonic)<br>
+                <strong>3. Create BlindSign Request:</strong> Zero-knowledge proof sent to trustees<br>
+                <strong>4. Backend Notification:</strong> System advances to next phase
+            </div>
+
+            <button id="prepareBtn" class="btn" onclick="prepareBlindSign()">
+                🔐 Prepare BlindSign
+            </button>
+
+            <!-- Results Section -->
+            <div id="resultsSection" class="hidden">
+                <div class="success-box" style="margin-top: 20px;">
+                    <strong style="color: #155724; font-size: 16px;">✅ PrepareBlindSign Complete!</strong>
+                    <p style="font-size: 12px; color: #155724; margin: 5px 0 0 0;">
+                        Your credentials have been generated and the request has been sent to trustees.
+                    </p>
+                </div>
+
+                <!-- DID Mnemonic -->
+                <div style="margin-top: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <strong style="font-size: 14px;">🔑 DID Mnemonic (12 words):</strong>
+                        <button class="copy-btn" onclick="copyMnemonic('didMnemonic')">📋 Copy</button>
+                    </div>
+                    <div class="mnemonic-box" id="didMnemonic"></div>
+                    <div class="warning-box">
+                        ⚠️ <strong>SAVE THIS!</strong> This is your secret identity. It cannot be recovered if lost.
+                    </div>
+                </div>
+
+                <!-- o-value Mnemonic -->
+                <div style="margin-top: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <strong style="font-size: 14px;">🔐 o-value Mnemonic (12 words):</strong>
+                        <button class="copy-btn" onclick="copyMnemonic('oValueMnemonic')">📋 Copy</button>
+                    </div>
+                    <div class="mnemonic-box" id="oValueMnemonic"></div>
+                    <div class="warning-box">
+                        ⚠️ <strong>SAVE THIS!</strong> This is your blinding factor for privacy.
+                    </div>
+                </div>
+
+                <!-- PrepareBlindSign Outputs -->
+                <div id="blindSignOutputs" class="hidden" style="margin-top: 20px;">
+                    <h3 style="font-size: 15px; color: #495057; margin-bottom: 10px;">📊 PrepareBlindSign Outputs:</h3>
+
+                    <div class="output-section">
+                        <div class="output-label">Commitment (com):</div>
+                        <div class="output-value" id="outputCom"></div>
+                    </div>
+
+                    <div class="output-section">
+                        <div class="output-label">Initial Commitment (com_i):</div>
+                        <div class="output-value" id="outputComI"></div>
+                    </div>
+
+                    <div class="output-section">
+                        <div class="output-label">Hash Point (h):</div>
+                        <div class="output-value" id="outputH"></div>
+                    </div>
+
+                    <div class="output-section">
+                        <div class="output-label">Proof - Challenge (c):</div>
+                        <div class="output-value" id="outputC"></div>
+                    </div>
+
+                    <div class="output-section">
+                        <div class="output-label">Proof - Response s1:</div>
+                        <div class="output-value" id="outputS1"></div>
+                    </div>
+
+                    <div class="output-section">
+                        <div class="output-label">Proof - Response s2:</div>
+                        <div class="output-value" id="outputS2"></div>
+                    </div>
+
+                    <div class="output-section">
+                        <div class="output-label">Proof - Response s3:</div>
+                        <div class="output-value" id="outputS3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Emscripten WASM (UMD format) before ES6 modules -->
+    <script src="./wasm/blindsign.js"></script>
+
+    <script type="module">
+        // Configuration
+        const VOTER_ID = '{{VOTER_ID}}';
+        const ELECTION_ID = '{{ELECTION_ID}}';
+        const API_PORT = '{{API_PORT}}';
+        const UI_PORT = '{{UI_PORT}}';
+
+        // Load WASM modules for DID generation and PrepareBlindSign
+        let wasmModule = null;
+        let blindSignModule = null;
+        let cryptoParams = null;
+
+        console.log('🔵 Loading WASM modules...');
+        console.log('📍 All cryptographic operations will run in YOUR BROWSER');
+
+        try {
+            // Load DID WASM module
+            console.log('⏳ Loading DID WASM module...');
+            const wasmStartTime = performance.now();
+            const wasm = await import('./wasm/did_wasm.js');
+            await wasm.default();
+            const wasmEndTime = performance.now();
+            wasmModule = wasm;
+            console.log(`✅ WASM DID module loaded in ${(wasmEndTime - wasmStartTime).toFixed(2)}ms`);
+
+            // Load PBC BlindSign WASM module
+            console.log('⏳ Loading PBC BlindSign WASM module...');
+            const pbcStartTime = performance.now();
+            blindSignModule = await createBlindSignModule();
+            const pbcEndTime = performance.now();
+            console.log(`✅ WASM BlindSign module loaded in ${(pbcEndTime - pbcStartTime).toFixed(2)}ms`);
+
+            // Fetch crypto parameters from backend (via /storage endpoint)
+            const response = await fetch(`http://localhost:${UI_PORT}/storage`);
+            const data = await response.json();
+
+            if (data.crypto_parameters && data.crypto_parameters_loaded) {
+                cryptoParams = data.crypto_parameters;
+                console.log('✅ Crypto parameters loaded:', cryptoParams);
+
+                // Initialize PBC pairing with real parameters
+                const result = blindSignModule.ccall(
+                    'init_pairing',
+                    'number',
+                    ['string', 'string', 'string', 'string', 'string'],
+                    [
+                        cryptoParams.pairing_params,
+                        cryptoParams.prime_order,
+                        cryptoParams.g1,
+                        cryptoParams.g2,
+                        cryptoParams.h1
+                    ]
+                );
+
+                if (result === 0) {
+                    console.log('✅ PBC pairing initialized with backend parameters');
+                } else {
+                    console.error('❌ Failed to initialize PBC pairing');
+                }
+            } else {
+                console.warn('⚠️ Crypto parameters not available yet');
+            }
+        } catch (err) {
+            console.error('❌ Failed to load WASM modules:', err);
+            alert('Failed to load WASM modules. Please refresh the page.');
+        }
+
+        // Expose modules globally
+        window.wasmModule = wasmModule;
+        window.blindSignModule = blindSignModule;
+        window.cryptoParams = cryptoParams;
+        window.VOTER_ID = VOTER_ID;
+        window.ELECTION_ID = ELECTION_ID;
+        window.API_PORT = API_PORT;
+        window.UI_PORT = UI_PORT;
+    </script>
+
+    <script>
+        async function prepareBlindSign() {
+            if (!window.wasmModule || !window.blindSignModule) {
+                alert('WASM modules not loaded. Please refresh the page.');
+                return;
+            }
+
+            if (!window.cryptoParams) {
+                alert('Crypto parameters not loaded. Please wait for election setup to complete.');
+                return;
+            }
+
+            const btn = document.getElementById('prepareBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Generating mnemonics...';
+
+            try {
+                // Step 1: Generate DID mnemonic
+                console.log('🔵 Step 1: Generating DID mnemonic...');
+                const didResult = window.wasmModule.generate_did();
+                const didMnemonic = didResult.mnemonic;
+                const did = didResult.did;
+                console.log('✅ DID generated');
+
+                // Step 2: Generate o-value mnemonic
+                console.log('🔵 Step 2: Generating o-value mnemonic...');
+                btn.textContent = '⏳ Generating o-value...';
+                const oResult = window.wasmModule.generate_o_value();
+                const oValueMnemonic = oResult.mnemonic;
+                const oValue = oResult.did; // The 'did' field holds o_value
+                console.log('✅ o-value generated');
+
+                // Display mnemonics
+                document.getElementById('didMnemonic').textContent = didMnemonic;
+                document.getElementById('oValueMnemonic').textContent = oValueMnemonic;
+                document.getElementById('resultsSection').classList.remove('hidden');
+
+                // Step 3: Prepare BlindSign
+                console.log('🔵 Step 3: Preparing blind signature request...');
+                btn.textContent = '⏳ Preparing blind signature...';
+
+                const startTime = performance.now();
+
+                // Call C function via Emscripten ccall
+                const resultPtr = window.blindSignModule.ccall(
+                    'prepare_blind_sign',
+                    'string',
+                    ['string', 'string'],
+                    [did, oValue]
+                );
+
+                const endTime = performance.now();
+
+                // Parse JSON result
+                const blindSignResult = JSON.parse(resultPtr);
+
+                console.log(`✅ PrepareBlindSign completed in ${(endTime - startTime).toFixed(2)}ms (Pure WASM + PBC)`);
+                console.log('🔒 Zero-knowledge proof generated locally!');
+
+                // Display outputs
+                document.getElementById('outputCom').textContent = blindSignResult.com || 'N/A';
+                document.getElementById('outputComI').textContent = blindSignResult.com_i || 'N/A';
+                document.getElementById('outputH').textContent = blindSignResult.h || 'N/A';
+                document.getElementById('outputC').textContent = blindSignResult.proof?.c || 'N/A';
+                document.getElementById('outputS1').textContent = blindSignResult.proof?.s1 || 'N/A';
+                document.getElementById('outputS2').textContent = blindSignResult.proof?.s2 || 'N/A';
+                document.getElementById('outputS3').textContent = blindSignResult.proof?.s3 || 'N/A';
+                document.getElementById('blindSignOutputs').classList.remove('hidden');
+
+                // Step 4: Notify backend
+                console.log('🔵 Step 4: Notifying backend...');
+                btn.textContent = '⏳ Notifying backend...';
+
+                const response = await fetch(`http://host.docker.internal:8080/api/voters/${window.VOTER_ID}/prepare_blindsign_complete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('✅ Backend notified:', result);
+                    btn.textContent = '✅ PrepareBlindSign Complete!';
+                    alert('✅ PrepareBlindSign başarıyla tamamlandı!\n\nBackend bilgilendirildi. Trustee\'leri bekliyorsunuz.');
+                } else {
+                    throw new Error('Failed to notify backend: ' + response.statusText);
+                }
+
+            } catch (error) {
+                console.error('❌ Error:', error);
+                alert('Error: ' + error.message);
+                btn.disabled = false;
+                btn.textContent = '🔐 Prepare BlindSign';
+            }
+        }
+
+        function copyMnemonic(elementId) {
+            const text = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('📋 Mnemonic copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy to clipboard');
+            });
+        }
+    </script>
+</body>
+</html>

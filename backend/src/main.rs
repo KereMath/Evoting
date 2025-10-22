@@ -91,6 +91,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/elections", post(handlers::elections::create_election))
         .route("/api/elections/:id", get(handlers::elections::get_election))
         .route("/api/elections/:id", delete(handlers::elections::delete_election))
+        .route("/api/elections/:id/advance-to-did", post(handlers::elections::advance_to_did_phase))
 
         // Trustees
         .route("/api/trustees", get(handlers::trustees::list_trustees))
@@ -99,7 +100,10 @@ async fn main() -> anyhow::Result<()> {
         // Voters
         .route("/api/voters", get(handlers::voters::list_voters))
         .route("/api/voters", post(handlers::voters::create_voter))
+        .route("/api/voters/:id", get(handlers::voters::get_voter_status))
         .route("/api/voters/:id", delete(handlers::voters::delete_voter))
+        .route("/api/voters/:id/did-complete", post(handlers::voters::mark_did_complete))
+        .route("/api/voters/:id/prepare_blindsign_complete", post(handlers::voters::mark_prepare_blindsign_complete))
         .route("/api/voters/upload-csv", post(handlers::voters::upload_voters_csv))
 
         // Events (for logging/monitoring)

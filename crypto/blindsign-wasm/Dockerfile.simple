@@ -1,0 +1,44 @@
+# Simplified WASM build - GMP only (no PBC)
+FROM emscripten/emsdk:3.1.50
+
+WORKDIR /build
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    tar \
+    make \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download and build GMP
+RUN wget https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz && \
+    tar -xf gmp-6.3.0.tar.xz && \
+    cd gmp-6.3.0 && \
+    emconfigure ./configure --prefix=/build/install --disable-assembly --host=none CFLAGS="-O3" && \
+    emmake make -j$(nproc) && \
+    emmake make install && \
+    cd .. && rm -rf gmp-6.3.0 gmp-6.3.0.tar.xz
+
+# Copy source files
+COPY blindsign_simple.c /build/
+
+# Build WASM module (GMP + SHA-512 only, no PBC)
+RUN emcc blindsign_simple.c \
+    -I/build/install/include \
+    -L/build/install/lib \
+    -lgmp \
+    -s WASM=1 \
+    -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap","UTF8ToString","stringToUTF8","lengthBytesUTF8"]' \
+    -s EXPORTED_FUNCTIONS='["_prepare_blind_sign_simple","_malloc","_free"]' \
+    -s ALLOW_MEMORY_GROWTH=1 \
+    -s INITIAL_MEMORY=32MB \
+    -s MAXIMUM_MEMORY=128MB \
+    -s MODULARIZE=1 \
+    -s EXPORT_NAME='createBlindSignModule' \
+    -s ENVIRONMENT='web' \
+    -s ASSERTIONS=1 \
+    -s STACK_SIZE=2MB \
+    -O3 \
+    -o blindsign.js
+
+CMD ["sh", "-c", "cp blindsign.js blindsign.wasm /output/ 2>/dev/null || true"]
