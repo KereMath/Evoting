@@ -27,7 +27,9 @@
       "Bash(docker volume prune:*)",
       "Bash(docker network prune:*)",
       "Bash(docker system prune:*)",
-      "Read(//c/**)"
+      "Read(//c/**)",
+      "Bash(rm:*)",
+      "Bash(ELECTION_ID=\"fd0f3169-345f-4d33-94ea-a60c6bfd84ca\")"
     ],
     "deny": [],
     "ask": []

@@ -202,27 +202,27 @@
                     </p>
                 </div>
 
-                <!-- DID Mnemonic -->
+                <!-- DID Credentials -->
                 <div style="margin-top: 20px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <strong style="font-size: 14px;">🔑 DID Mnemonic (12 words):</strong>
-                        <button class="copy-btn" onclick="copyMnemonic('didMnemonic')">📋 Copy</button>
+                        <strong style="font-size: 14px;">🔑 DID (Digital Identity):</strong>
+                        <button class="copy-btn" onclick="downloadDID()">⬇️ Download DID.txt</button>
                     </div>
-                    <div class="mnemonic-box" id="didMnemonic"></div>
+                    <div class="mnemonic-box" id="didMnemonic" style="font-size: 11px; word-break: break-all;"></div>
                     <div class="warning-box">
-                        ⚠️ <strong>SAVE THIS!</strong> This is your secret identity. It cannot be recovered if lost.
+                        ⚠️ <strong>DOWNLOAD THIS!</strong> You will need it to vote. It cannot be recovered if lost.
                     </div>
                 </div>
 
-                <!-- o-value Mnemonic -->
+                <!-- o-value Credentials -->
                 <div style="margin-top: 20px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <strong style="font-size: 14px;">🔐 o-value Mnemonic (12 words):</strong>
-                        <button class="copy-btn" onclick="copyMnemonic('oValueMnemonic')">📋 Copy</button>
+                        <strong style="font-size: 14px;">🔐 o-value (Blinding Factor):</strong>
+                        <button class="copy-btn" onclick="downloadOValue()">⬇️ Download o.txt</button>
                     </div>
-                    <div class="mnemonic-box" id="oValueMnemonic"></div>
+                    <div class="mnemonic-box" id="oValueMnemonic" style="font-size: 11px; word-break: break-all;"></div>
                     <div class="warning-box">
-                        ⚠️ <strong>SAVE THIS!</strong> This is your blinding factor for privacy.
+                        ⚠️ <strong>DOWNLOAD THIS!</strong> You will need it to unblind your credential.
                     </div>
                 </div>
 
@@ -279,8 +279,7 @@
         const API_PORT = '{{API_PORT}}';
         const UI_PORT = '{{UI_PORT}}';
 
-        // Load WASM modules for DID generation and PrepareBlindSign
-        let wasmModule = null;
+        // Load WASM modules for PrepareBlindSign
         let blindSignModule = null;
         let cryptoParams = null;
 
@@ -288,21 +287,13 @@
         console.log('📍 All cryptographic operations will run in YOUR BROWSER');
 
         try {
-            // Load DID WASM module
-            console.log('⏳ Loading DID WASM module...');
-            const wasmStartTime = performance.now();
-            const wasm = await import('./wasm/did_wasm.js');
-            await wasm.default();
-            const wasmEndTime = performance.now();
-            wasmModule = wasm;
-            console.log(`✅ WASM DID module loaded in ${(wasmEndTime - wasmStartTime).toFixed(2)}ms`);
-
             // Load PBC BlindSign WASM module
             console.log('⏳ Loading PBC BlindSign WASM module...');
             const pbcStartTime = performance.now();
             blindSignModule = await createBlindSignModule();
             const pbcEndTime = performance.now();
             console.log(`✅ WASM BlindSign module loaded in ${(pbcEndTime - pbcStartTime).toFixed(2)}ms`);
+            console.log('✅ DID generation will use pure JavaScript (Web Crypto API)');
 
             // Fetch crypto parameters from backend (via /storage endpoint)
             const response = await fetch(`http://localhost:${UI_PORT}/storage`);
@@ -340,7 +331,6 @@
         }
 
         // Expose modules globally
-        window.wasmModule = wasmModule;
         window.blindSignModule = blindSignModule;
         window.cryptoParams = cryptoParams;
         window.VOTER_ID = VOTER_ID;
@@ -350,8 +340,91 @@
     </script>
 
     <script>
+        // Helper: Generate random 256-bit value (32 bytes)
+        function generateRandom256() {
+            const array = new Uint8Array(32);
+            crypto.getRandomValues(array);
+            return array;
+        }
+
+        // Helper: Convert Uint8Array to hex string
+        function toHex(bytes) {
+            return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Helper: Convert hex string to Uint8Array
+        function fromHex(hex) {
+            const bytes = new Uint8Array(hex.length / 2);
+            for (let i = 0; i < hex.length; i += 2) {
+                bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+            }
+            return bytes;
+        }
+
+        // Helper: Compare two byte arrays (returns true if a < b)
+        function isLessThan(a, b) {
+            for (let i = 0; i < Math.min(a.length, b.length); i++) {
+                if (a[i] < b[i]) return true;
+                if (a[i] > b[i]) return false;
+            }
+            return a.length < b.length;
+        }
+
+        // Generate DID with rejection sampling: DID = SHA256(TC_ID || r) where DID < p
+        async function generateDID(tcId, primeOrderHex) {
+            const primeOrderBytes = fromHex(primeOrderHex);
+
+            while (true) {
+                // Generate random r (256-bit)
+                const r = generateRandom256();
+
+                // Concatenate TC_ID (as 11-digit number, 37 bits) + r
+                const tcIdBytes = new TextEncoder().encode(tcId);
+                const combined = new Uint8Array(tcIdBytes.length + r.length);
+                combined.set(tcIdBytes, 0);
+                combined.set(r, tcIdBytes.length);
+
+                // Hash with SHA-256
+                const hashBuffer = await crypto.subtle.digest('SHA-256', combined);
+                const didBytes = new Uint8Array(hashBuffer);
+
+                // Check if DID < p (rejection sampling)
+                if (isLessThan(didBytes, primeOrderBytes)) {
+                    return {
+                        did: toHex(didBytes),
+                        r: toHex(r),
+                        tcId: tcId
+                    };
+                }
+                // Otherwise reject and retry
+            }
+        }
+
+        // Generate o-value with rejection sampling: o = SHA256(r1) where o < p
+        async function generateOValue(primeOrderHex) {
+            const primeOrderBytes = fromHex(primeOrderHex);
+
+            while (true) {
+                // Generate random r1 (256-bit)
+                const r1 = generateRandom256();
+
+                // Hash with SHA-256
+                const hashBuffer = await crypto.subtle.digest('SHA-256', r1);
+                const oBytes = new Uint8Array(hashBuffer);
+
+                // Check if o < p (rejection sampling)
+                if (isLessThan(oBytes, primeOrderBytes)) {
+                    return {
+                        o: toHex(oBytes),
+                        r1: toHex(r1)
+                    };
+                }
+                // Otherwise reject and retry
+            }
+        }
+
         async function prepareBlindSign() {
-            if (!window.wasmModule || !window.blindSignModule) {
+            if (!window.blindSignModule) {
                 alert('WASM modules not loaded. Please refresh the page.');
                 return;
             }
@@ -363,27 +436,31 @@
 
             const btn = document.getElementById('prepareBtn');
             btn.disabled = true;
-            btn.textContent = '⏳ Generating mnemonics...';
+            btn.textContent = '⏳ Generating DID...';
 
             try {
-                // Step 1: Generate DID mnemonic
-                console.log('🔵 Step 1: Generating DID mnemonic...');
-                const didResult = window.wasmModule.generate_did();
-                const didMnemonic = didResult.mnemonic;
-                const did = didResult.did;
-                console.log('✅ DID generated');
+                // Get TC_ID from user (for now, use voter ID as TC_ID - later this should be Turkish ID)
+                const tcId = window.VOTER_ID.replace(/-/g, '').substring(0, 11); // Use first 11 chars as TC_ID
+                const primeOrder = window.cryptoParams.prime_order;
 
-                // Step 2: Generate o-value mnemonic
-                console.log('🔵 Step 2: Generating o-value mnemonic...');
+                // Step 1: Generate DID
+                console.log('🔵 Step 1: Generating DID with rejection sampling...');
+                const didResult = await generateDID(tcId, primeOrder);
+                console.log('✅ DID generated:', didResult.did);
+
+                // Step 2: Generate o-value
+                console.log('🔵 Step 2: Generating o-value with rejection sampling...');
                 btn.textContent = '⏳ Generating o-value...';
-                const oResult = window.wasmModule.generate_o_value();
-                const oValueMnemonic = oResult.mnemonic;
-                const oValue = oResult.did; // The 'did' field holds o_value
-                console.log('✅ o-value generated');
+                const oResult = await generateOValue(primeOrder);
+                console.log('✅ o-value generated:', oResult.o);
 
-                // Display mnemonics
-                document.getElementById('didMnemonic').textContent = didMnemonic;
-                document.getElementById('oValueMnemonic').textContent = oValueMnemonic;
+                // Store for download
+                window.didCredentials = didResult;
+                window.oCredentials = oResult;
+
+                // Display values (NOT mnemonics anymore)
+                document.getElementById('didMnemonic').textContent = didResult.did;
+                document.getElementById('oValueMnemonic').textContent = oResult.o;
                 document.getElementById('resultsSection').classList.remove('hidden');
 
                 // Step 3: Prepare BlindSign
@@ -397,7 +474,7 @@
                     'prepare_blind_sign',
                     'string',
                     ['string', 'string'],
-                    [did, oValue]
+                    [didResult.did, oResult.o]
                 );
 
                 const endTime = performance.now();
@@ -442,6 +519,63 @@
                 btn.disabled = false;
                 btn.textContent = '🔐 Prepare BlindSign';
             }
+        }
+
+        // Download DID credentials as text file
+        function downloadDID() {
+            if (!window.didCredentials) {
+                alert('DID not generated yet!');
+                return;
+            }
+
+            const content = `E-Voting DID Credentials
+Generated: ${new Date().toISOString()}
+
+TC_ID: ${window.didCredentials.tcId}
+Random r: ${window.didCredentials.r}
+DID: ${window.didCredentials.did}
+
+IMPORTANT: Keep this file secure!
+You will need the DID value to cast your vote.
+
+Formula: DID = SHA256(TC_ID || r)
+`;
+
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'DID.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Download o-value credentials as text file
+        function downloadOValue() {
+            if (!window.oCredentials) {
+                alert('o-value not generated yet!');
+                return;
+            }
+
+            const content = `E-Voting o-value Credentials
+Generated: ${new Date().toISOString()}
+
+Random r1: ${window.oCredentials.r1}
+o-value: ${window.oCredentials.o}
+
+IMPORTANT: Keep this file secure!
+You will need the o-value to unblind your credential.
+
+Formula: o = SHA256(r1)
+`;
+
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'o.txt';
+            a.click();
+            URL.revokeObjectURL(url);
         }
 
         function copyMnemonic(elementId) {
